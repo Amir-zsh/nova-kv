@@ -1,0 +1,17 @@
+{
+  "methods": ["bf16", "turboquant", "quarot", "oscar", "nova"],
+  "models": {
+    "llama31_8b": "meta-llama/Llama-3.1-8B-Instruct",
+    "qwen3_8b": "Qwen/Qwen3-8B",
+    "qwen3_4b_thinking": "Qwen/Qwen3-4B-Thinking-2507",
+    "gptoss_20b": "openai/gpt-oss-20b"
+  },
+  "tasks": {
+    "ruler_niah": {"seeds": [0, 1, 2], "lengths": [8192, 16384, 32768, 65536, 131072], "methods": ["bf16", "quarot", "oscar", "nova"]},
+    "gpqa_diamond": {"seeds": [0, 1, 2, 3, 4]},
+    "humaneval": {"seeds": [0, 1, 2, 3, 4]},
+    "livecodebench_v6": {"seeds": [0, 1, 2, 3, 4]},
+    "aime25": {"seeds": [0, 1, 2, 3, 4]},
+    "math500": {"seeds": [0, 1, 2, 3, 4]}
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "study": "throughput_gptoss20b",
+  "model": "openai/gpt-oss-20b",
+  "artifact_dir": "artifacts/synthetic/gpt-oss-20b_L24H8D64",
+  "synthetic_artifacts": true,
+  "_doc": [
+    "gpt-oss-20b row of the throughput grid. Same protocol as qwen3_8b.json;",
+    "the gpt-oss-specific pins below are what produced the published numbers:",
+    "- moe-runner-backend triton_kernel: native MXFP4 experts (~14.9 GB weights",
+    "  vs 39.5 GB dequantized-bf16), freeing ~25 GB for KV.",
+    "- prefill_backend triton: fa3 prefill asserts on gpt-oss's SWA layers with",
+    "  quantized KV.",
+    "- SGLANG_SWA_POOL_TOKENS=1048576 on quant arms: the default swa ratio sizes",
+    "  the (uncompressed) sliding-window tier off the full tier's TOKEN count,",
+    "  which self-defeats exactly when the full tier is compressed. bf16 keeps",
+    "  the default -- measured at its ceiling either way.",
+    "- SGLANG_ENABLE_STRICT_MEM_CHECK_DURING_IDLE=0 on quant arms: hybrid-SWA +",
+    "  radix + mixed pool trips an idle accounting check; demoted to a warning,",
+    "  the cell gates (no_retract/full_length/server_agrees) police real fallout.",
+    "- SGL_VQ2_CONFIG_JSON: decode stage-1 launch table tuned at this geometry",
+    "  (h_q=64); ships in artifacts/kernel_tables/.",
+    "- Quant arms inherit the keep-prefix-tail evictor (serve-script default ON): cached prefixes retain ~(window+ring) SWA tokens instead of full length, which is what lets bs=max reach the full-tier bound. The originally published grid ran the stock evictor and reached the same operating region via tree eviction; measured equivalent within noise.",
+    "Generate synthetic artifacts first:",
+    "  python throughput/make_synthetic_artifacts.py --model openai/gpt-oss-20b"
+  ],
+  "input_lens": [
+    30000,
+    60000,
+    90000
+  ],
+  "output_len": 1024,
+  "bs_max_ceiling": 256,
+  "seed": 1,
+  "reference": "bf16",
+  "serve": {
+    "ctx": 98304,
+    "mem_frac": 0.85,
+    "mem_frac_fallback": 0.8,
+    "prefill_backend": "triton",
+    "chunked_prefill_size": 8192,
+    "extra": "--moe-runner-backend triton_kernel"
+  },
+  "arms": [
+    {
+      "label": "bf16",
+      "method": "bf16",
+      "env": {
+        "KV_SPLITS": "8"
+      }
+    },
+    {
+      "label": "int2",
+      "method": "oscar",
+      "env": {
+        "KV_SPLITS": "8",
+        "SGLANG_SWA_POOL_TOKENS": "1048576",
+        "SGLANG_ENABLE_STRICT_MEM_CHECK_DURING_IDLE": "0"
+      }
+    },
+    {
+      "label": "nova_triton",
+      "method": "nova",
+      "env": {
+        "KV_SPLITS": "8",
+        "SGLANG_VQ_OPT_KMAP": "1",
+        "SGLANG_SWA_POOL_TOKENS": "1048576",
+        "SGLANG_ENABLE_STRICT_MEM_CHECK_DURING_IDLE": "0",
+        "SGL_VQ2_CONFIG_JSON": "artifacts/kernel_tables/vq2_tuned_gptoss20b_hq64.json"
+      }
+    },
+    {
+      "label": "nova_cuda",
+      "method": "nova",
+      "env": {
+        "KV_SPLITS": "8",
+        "SGLANG_VQ_OPT_KMAP": "1",
+        "SGLANG_VQ2_CUDA": "1",
+        "SGLANG_VQ2_CUDA_FP32": "1",
+        "SGLANG_VQ2_CUDA_GEOM": "16,256,64,8",
+        "SGLANG_SWA_POOL_TOKENS": "1048576",
+        "SGLANG_ENABLE_STRICT_MEM_CHECK_DURING_IDLE": "0",
+        "SGL_VQ2_CONFIG_JSON": "artifacts/kernel_tables/vq2_tuned_gptoss20b_hq64.json"
+      }
+    }
+  ],
+  "quant_bmax_slack": 1.0
+}

@@ -1,0 +1,63 @@
+{
+  "study": "throughput_qwen3_8b",
+  "model": "Qwen/Qwen3-8B",
+  "artifact_dir": "artifacts/synthetic/Qwen3-8B_L36H8D128",
+  "synthetic_artifacts": true,
+  "_doc": [
+    "Controlled decode-throughput benchmark. Three operating points per length:",
+    "bs=1 (equal-setting latency), bs=4 (scaling), bs=max (best achievable/GPU).",
+    "No CROSS-REQUEST prefix sharing: every prompt is a distinct random token",
+    "stream. Each request's OWN prefix is warmed before measuring, without which",
+    "a bs=max cell never forms -- prefilling 64 x 30k takes minutes while 1024",
+    "decode tokens take seconds, so early requests would finish generating",
+    "before late ones start decoding.",
+    "KV_SPLITS is pinned on every arm so all arms compare at the same decode",
+    "schedule. ARTIFACTS ARE SYNTHETIC (random rotations + random codebook):",
+    "THROUGHPUT-VALID / ACCURACY-INVALID -- generate with",
+    "  python throughput/make_synthetic_artifacts.py --model Qwen/Qwen3-8B",
+    "nova_cuda = nova + SGLANG_VQ2_CUDA=1: identical maths, decode stage-1 runs",
+    "the CUDA kernel (codebook staged in shared memory) instead of Triton."
+  ],
+  "input_lens": [30000, 60000, 90000],
+  "output_len": 1024,
+  "bs_max_ceiling": 64,
+  "seed": 1,
+  "reference": "bf16",
+  "serve": {
+    "ctx": 98304,
+    "mem_frac": 0.85,
+    "mem_frac_fallback": 0.8,
+    "prefill_backend": "fa3",
+    "chunked_prefill_size": 4096
+  },
+  "arms": [
+    {
+      "label": "bf16",
+      "method": "bf16",
+      "env": {"KV_SPLITS": "8"}
+    },
+    {
+      "label": "int2",
+      "method": "oscar",
+      "env": {"KV_SPLITS": "8"}
+    },
+    {
+      "label": "nova_triton",
+      "method": "nova",
+      "env": {
+        "KV_SPLITS": "8",
+        "SGLANG_VQ_OPT_KMAP": "1"
+      }
+    },
+    {
+      "label": "nova_cuda",
+      "method": "nova",
+      "env": {
+        "KV_SPLITS": "8",
+        "SGLANG_VQ_OPT_KMAP": "1",
+        "SGLANG_VQ2_CUDA": "1",
+        "SGLANG_VQ2_CUDA_FP32": "1"
+      }
+    }
+  ]
+}

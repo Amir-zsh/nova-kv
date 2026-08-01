@@ -1,0 +1,55 @@
+{
+  "_doc": "sha256 of every binary shipped in this artifact. Nothing else is downloaded: the Qwen3-8B / Llama-3.1-8B bundles and the NIAH row files are BUILT from scratch -- see README steps 2 and 5.",
+  "shipped_in_repo": [
+    {
+      "path": "artifacts/gptoss_20b/codebook.pt",
+      "sha256": "b65796b3a2628d57b038c5ad70fbd27dc1c7628b6b44fbdf90f4836b6144fdb9",
+      "bytes": 9936810
+    },
+    {
+      "path": "artifacts/gptoss_20b/k_rotation_qqt_r_h_pbr.pt",
+      "sha256": "968f5445a5ecbe3d93c70bdf3e2a553b982eef53dc92dccd2f95c5e6e0547efa",
+      "bytes": 207645
+    },
+    {
+      "path": "artifacts/gptoss_20b/turboquant_k3v3.pt",
+      "sha256": "6cc30405e8a7651a2f801b3ecf2817f6ead6b155eda3e1dab09e54352a0809e9",
+      "bytes": 396119
+    },
+    {
+      "path": "artifacts/gptoss_20b/v_rotation_sst_r_h_pbr.pt",
+      "sha256": "8acce755c6919a8b9fdee695dc1642e3fac230f7ec4a31c14d805d0269da24aa",
+      "bytes": 207645
+    },
+    {
+      "path": "artifacts/kernel_tables/vq2_tuned_gptoss20b_hq64.json",
+      "sha256": "e51071b128c00764bff2e7b3299de5c2e2f697d573f29eead5f7050366ac2f84",
+      "bytes": 601
+    },
+    {
+      "path": "datasets/aime25_gptoss_32k.jsonl",
+      "sha256": "fdd604c76a66a372f99f577aebad33c8b54150613f9aff1516ae979f91af9295",
+      "bytes": 43005
+    },
+    {
+      "path": "datasets/gpqa_diamond.csv",
+      "sha256": "41d1213cd7a4998605a26c2798500652572007161b3a92817ba46b35befcd305",
+      "bytes": 1373492
+    },
+    {
+      "path": "datasets/gpqa_gptoss.jsonl",
+      "sha256": "f596a97d996d1e69d45c7bc66d7d115362c6993efe2afa7d06097fab4997f6a1",
+      "bytes": 427042
+    },
+    {
+      "path": "datasets/math500_gptoss_32k.jsonl",
+      "sha256": "24d2329fa499785b04d6bc0d478b8cdd0cb42b481a1e081769d6f6d3268489cc",
+      "bytes": 758352
+    },
+    {
+      "path": "datasets/niah_corpus_essays.txt",
+      "sha256": "b9c684a24dd92f135bf9c40b823cdc3400158f4d62d1643671e3a36b803effac",
+      "bytes": 2974280
+    }
+  ]
+}

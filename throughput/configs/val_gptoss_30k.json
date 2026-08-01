@@ -1,0 +1,43 @@
+{
+  "study": "val_gptoss_30k",
+  "model": "openai/gpt-oss-20b",
+  "artifact_dir": "artifacts/synthetic/gpt-oss-20b_L24H8D64",
+  "synthetic_artifacts": true,
+  "_doc": [
+    "Validation subset of gptoss_20b.json: one length, bf16 vs nova_triton,",
+    "to confirm the repo reproduces the published 30k operating points",
+    "(bs=max ~210 quant vs ~32 bf16; speedup ~1.3-1.5x)."
+  ],
+  "input_lens": [30000],
+  "output_len": 1024,
+  "bs_max_ceiling": 256,
+  "seed": 1,
+  "reference": "bf16",
+  "serve": {
+    "ctx": 98304,
+    "mem_frac": 0.85,
+    "mem_frac_fallback": 0.8,
+    "prefill_backend": "triton",
+    "chunked_prefill_size": 8192,
+    "extra": "--moe-runner-backend triton_kernel"
+  },
+  "arms": [
+    {
+      "label": "bf16",
+      "method": "bf16",
+      "env": {"KV_SPLITS": "8"}
+    },
+    {
+      "label": "nova_triton",
+      "method": "nova",
+      "env": {
+        "KV_SPLITS": "8",
+        "SGLANG_VQ_OPT_KMAP": "1",
+        "SGLANG_SWA_POOL_TOKENS": "1048576",
+        "SGLANG_ENABLE_STRICT_MEM_CHECK_DURING_IDLE": "0",
+        "SGL_VQ2_CONFIG_JSON": "artifacts/kernel_tables/vq2_tuned_gptoss20b_hq64.json"
+      }
+    }
+  ],
+  "quant_bmax_slack": 1.0
+}
