@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOVA-KV &middot; Spend Bits Where Queries Look</title>
+<meta name="description" content="NOVA-KV: KV cache vector quantization with attention-preserving transforms. 2-bit KV cache that keeps long-context retrieval accuracy.">
+
+<!-- social preview -->
+<meta property="og:title" content="Spend Bits Where Queries Look: KV Cache Vector Quantization with Attention-Preserving Transforms">
+<meta property="og:description" content="NOVA-KV compresses the KV cache to ~2.2 bits per element while preserving the attention products.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="overview.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<style>
+  :root{
+    --panel:#FFF5F5;      /* fairmeta title-panel tint */
+    --brick:#C1121F;      /* accent */
+    --molten:#780000;
+    --deep:#003049;       /* headings */
+    --steel:#669BBC;
+    --ink:#1a1a1a;
+    --muted:#5a5f66;
+    --rule:#e6e1e1;
+    --maxw:860px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; padding:0 1.25rem 5rem;
+    font-family:"Charter","Bitstream Charter","Sitka Text",Cambria,Georgia,serif;
+    font-size:18px; line-height:1.62; color:var(--ink); background:#fff;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto}
+  h1,h2,h3,.sans{font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+
+  /* ---- title panel (mirrors the paper's first page) ---- */
+  header.panel{
+    background:var(--panel); border-radius:18px;
+    padding:2.2rem 2.2rem 1.6rem; margin:2.5rem 0 2rem;
+  }
+  header.panel h1{
+    font-size:2.05rem; line-height:1.22; font-weight:800;
+    letter-spacing:-.015em; margin:0 0 .9rem; color:#111;
+  }
+  .authors{font-weight:650; font-size:1.02rem; margin:0 0 .35rem; line-height:1.5}
+  .authors a{color:inherit; text-decoration:none; border-bottom:1px solid rgba(0,0,0,.22)}
+  .authors a:hover{border-bottom-color:var(--brick); color:var(--brick)}
+  .affil{color:var(--muted); font-size:.98rem; margin:0}
+  .eqc{color:var(--muted); font-size:.86rem; margin:.15rem 0 0}
+
+  /* ---- link buttons ---- */
+  .links{display:flex; flex-wrap:wrap; gap:.6rem; margin:1.5rem 0 .2rem}
+  .btn{
+    display:inline-flex; align-items:center; gap:.5rem;
+    font-family:inherit; font-size:.93rem; font-weight:600;
+    padding:.55rem 1.05rem; border-radius:999px;
+    background:var(--deep); color:#fff; text-decoration:none;
+    transition:transform .12s ease, background .12s ease;
+  }
+  .btn:hover{background:var(--brick); transform:translateY(-1px)}
+  .btn svg{width:1.02em; height:1.02em; fill:currentColor}
+
+  /* ---- sections ---- */
+  section{margin:3rem 0}
+  h2{
+    font-size:1.32rem; font-weight:750; color:var(--deep);
+    margin:0 0 .9rem; letter-spacing:-.01em;
+  }
+  p{margin:0 0 1.05rem}
+  figure{margin:1.6rem 0; text-align:center}
+  figure img{max-width:100%; height:auto; border-radius:8px}
+  figcaption{
+    font-size:.9rem; color:var(--muted); margin-top:.7rem;
+    text-align:left; line-height:1.55;
+  }
+
+  /* ---- headline numbers ---- */
+  .stats{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+    gap:.9rem; margin:1.5rem 0;
+  }
+  .stat{
+    background:var(--panel); border-radius:12px; padding:1.1rem 1rem;
+    border-left:3px solid var(--brick);
+  }
+  .stat .n{
+    font-family:"Inter",sans-serif; font-size:1.65rem; font-weight:800;
+    color:var(--molten); line-height:1.1; display:block;
+  }
+  .stat .l{font-size:.85rem; color:var(--muted); margin-top:.3rem; display:block; line-height:1.4}
+
+  /* ---- table ---- */
+  .tablewrap{overflow-x:auto; margin:1.4rem 0}
+  table{border-collapse:collapse; width:100%; font-size:.92rem}
+  th,td{padding:.5rem .7rem; text-align:right; white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{
+    font-family:"Inter",sans-serif; font-weight:650; font-size:.85rem;
+    color:var(--deep); border-bottom:2px solid var(--deep);
+  }
+  tbody tr{border-bottom:1px solid var(--rule)}
+  tbody tr.ours{background:var(--panel); font-weight:650}
+  tbody tr.ours td:first-child{color:var(--molten)}
+  .tnote{font-size:.85rem; color:var(--muted); margin-top:.5rem}
+
+  /* ---- bibtex ---- */
+  .bibhead{display:flex; align-items:center; justify-content:space-between; gap:1rem}
+  pre{
+    background:#f7f7f8; border:1px solid var(--rule); border-radius:10px;
+    padding:1rem 1.1rem; overflow-x:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.83rem; line-height:1.55; margin:.8rem 0 0;
+  }
+  .copy{
+    font-family:"Inter",sans-serif; font-size:.82rem; font-weight:600;
+    padding:.35rem .8rem; border-radius:999px; cursor:pointer;
+    border:1px solid var(--rule); background:#fff; color:var(--muted);
+  }
+  .copy:hover{border-color:var(--brick); color:var(--brick)}
+
+  footer{
+    border-top:1px solid var(--rule); margin-top:3.5rem; padding-top:1.3rem;
+    font-size:.87rem; color:var(--muted);
+  }
+  a{color:var(--brick)}
+
+  @media (max-width:600px){
+    body{font-size:17px}
+    header.panel{padding:1.5rem 1.25rem 1.2rem; border-radius:14px}
+    header.panel h1{font-size:1.55rem}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="panel">
+  <h1>Spend Bits Where Queries Look:<br>KV Cache Vector Quantization with Attention-Preserving Transforms</h1>
+  <p class="authors">
+    Samuel Fern&aacute;ndez-Mendui&ntilde;a<sup>*</sup>,
+    Amir Ziashahabi<sup>*</sup>,
+    Eduardo Pavez,
+    Antonio Ortega,
+    Salman Avestimehr
+  </p>
+  <p class="affil">Department of Electrical and Computer Engineering, University of Southern California</p>
+  <p class="eqc"><sup>*</sup>Equal contribution</p>
+
+  <nav class="links">
+    <!-- TODO: replace ARXIV_ID once the paper is posted -->
+    <a class="btn" href="https://arxiv.org/abs/ARXIV_ID">
+      <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2zm8 1.5V8h4.5L14 3.5zM8 12h8v1.5H8V12zm0 4h8v1.5H8V16z"/></svg>
+      Paper
+    </a>
+    <a class="btn" href="https://github.com/Amir-zsh/nova-kv">
+      <svg viewBox="0 0 24 24"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 1.8 2.7 1.3 3.4 1 .1-.7.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6 4.6-1.5 7.8-5.8 7.8-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+      Code
+    </a>
+    <a class="btn" href="#bibtex">
+      <svg viewBox="0 0 24 24"><path d="M4 4h16v2H4V4zm0 5h16v2H4V9zm0 5h10v2H4v-2z"/></svg>
+      BibTeX
+    </a>
+  </nav>
+</header>
+
+<section>
+  <h2>Overview</h2>
+  <p>
+    Long-context LLM decoding reads the key&ndash;value (KV) cache at every step. Loading it takes
+    longer than computing attention over it, so throughput is <strong>bandwidth-bound</strong> &mdash;
+    shrinking the cache raises both decoding speed and serving capacity.
+  </p>
+  <p>
+    The catch is <em>what</em> to preserve. Standard quantizers minimize the error in the stored
+    keys and values, but attention never reads them directly: it reads them through the
+    key&ndash;query inner products. <strong>NOVA-KV</strong> formulates KV cache compression as a
+    transform coding problem whose distortion is the error in the <em>attention products</em>, and
+    derives the optimal transforms in closed form from calibration statistics.
+  </p>
+  <figure>
+    <img src="overview.png" alt="NOVA-KV pipeline: calibration produces the transforms, the volume-equalized grouping and the codebooks; at inference each key is transformed and encoded once on the write path, while the read path is a table lookup.">
+    <figcaption>
+      <strong>The method.</strong> Calibration yields the transforms, the volume-equalized grouping,
+      and the codebooks. Online, each new key is transformed and encoded once on the write path;
+      the read path &mdash; paid at every decoding step &mdash; is a table lookup.
+    </figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Three results</h2>
+  <p>
+    <strong>The optimal key transform is not orthogonal.</strong> It whitens by the query
+    second-moment matrix before decorrelating. Every prior method constrains the transform to be a
+    rotation, which we show is strictly suboptimal whenever the query statistics are anisotropic.
+  </p>
+  <p>
+    <strong>It satisfies a generalized Parseval relation.</strong> The attention-aware distortion
+    becomes ordinary mean-squared error in the transform domain, so any off-the-shelf MSE-optimal
+    vector quantizer can be applied directly to the coefficients.
+  </p>
+  <p>
+    <strong>Equal-volume grouping recovers the coding gain.</strong> Fixed-width cache layouts
+    forbid the unequal codebooks that optimal bit allocation needs. Grouping coefficients into
+    equal-volume partitions attains the variable-rate optimum with a single codebook size.
+  </p>
+</section>
+
+<section>
+  <h2>Results</h2>
+  <div class="stats">
+    <div class="stat"><span class="n">2.22</span><span class="l">bits per KV element</span></div>
+    <div class="stat"><span class="n">75.4</span><span class="l">RULER NIAH @128K<br>(OSCAR: 25.3)</span></div>
+    <div class="stat"><span class="n">&minus;1.8</span><span class="l">points vs BF16<br>on reasoning &amp; code</span></div>
+  </div>
+
+  <p>
+    Long-context retrieval is where the methods separate. On Qwen3-8B at 128K context, scalar
+    baselines collapse while NOVA-KV tracks the uncompressed reference:
+  </p>
+
+  <div class="tablewrap">
+  <table>
+    <thead>
+      <tr><th>Method</th><th>BPE</th><th>8K</th><th>32K</th><th>64K</th><th>128K</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>BF16 (uncompressed)</td><td>16</td><td>99.9</td><td>98.5</td><td>84.3</td><td>83.4</td></tr>
+      <tr><td>QuaRot</td><td>2.25</td><td>54.8</td><td>23.5</td><td>0.0</td><td>0.0</td></tr>
+      <tr><td>OSCAR</td><td>2.28</td><td>96.7</td><td>86.9</td><td>60.6</td><td>25.3</td></tr>
+      <tr class="ours"><td>NOVA-KV (ours)</td><td>2.22</td><td>99.4</td><td>96.0</td><td>76.4</td><td>75.4</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tnote">RULER NIAH mean accuracy (%), Qwen3-8B. Full results for four models, including
+  Llama-3.1-8B and GPT-OSS-20B, are in the paper.</p>
+
+  <figure>
+    <img src="decode.png" alt="Measured per-step decode time by phase for Qwen3-8B on 8 H100s, showing KV cache loading dominating at large batch size.">
+    <figcaption>
+      <strong>Why this matters.</strong> Measured per-step decode time for Qwen3-8B
+      (8&times;H100, 16K context). At batch 64, reading the KV cache is 76% of the step &mdash;
+      more than six times the cost of loading every weight in the model.
+    </figcaption>
+  </figure>
+</section>
+
+<section id="bibtex">
+  <div class="bibhead">
+    <h2 style="margin:0">BibTeX</h2>
+    <button class="copy" onclick="copyBib(this)">Copy</button>
+  </div>
+<pre id="bib">@article{fernandezmenduina2026novakv,
+  title   = {Spend Bits Where Queries Look: KV Cache Vector Quantization
+             with Attention-Preserving Transforms},
+  author  = {Fern\'andez-Mendui\~na, Samuel and Ziashahabi, Amir and
+             Pavez, Eduardo and Ortega, Antonio and Avestimehr, Salman},
+  journal = {arXiv preprint arXiv:ARXIV_ID},
+  year    = {2026}
+}</pre>
+</section>
+
+<footer>
+  Correspondence: <a href="mailto:samuelf9@usc.edu">samuelf9@usc.edu</a>,
+  <a href="mailto:ziashaha@usc.edu">ziashaha@usc.edu</a>
+  &nbsp;&middot;&nbsp; University of Southern California
+</footer>
+
+</div>
+
+<script>
+function copyBib(btn){
+  const t = document.getElementById('bib').innerText;
+  navigator.clipboard.writeText(t).then(()=>{
+    const old = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(()=>{btn.textContent = old;}, 1600);
+  });
+}
+</script>
+</body>
+</html>
