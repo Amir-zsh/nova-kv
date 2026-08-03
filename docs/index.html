@@ -1,228 +1,690 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NOVA-KV &middot; Spend Bits Where Queries Look</title>
-<meta name="description" content="NOVA-KV: KV cache vector quantization with attention-preserving transforms. 2-bit KV cache that keeps long-context retrieval accuracy.">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NOVA-KV: KV Cache Vector Quantization with Attention-Preserving Transforms</title>
+  <meta name="description" content="NOVA-KV compresses the LLM KV cache to ~2.2 bits per element while preserving the attention products." />
+  <meta property="og:title" content="Spend Bits Where Queries Look: KV Cache Vector Quantization with Attention-Preserving Transforms" />
+  <meta property="og:description" content="A 2-bit KV cache that keeps long-context retrieval accuracy." />
+  <meta property="og:image" content="overview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&display=swap" rel="stylesheet" />
+<style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<!-- social preview -->
-<meta property="og:title" content="Spend Bits Where Queries Look: KV Cache Vector Quantization with Attention-Preserving Transforms">
-<meta property="og:description" content="NOVA-KV compresses the KV cache to ~2.2 bits per element while preserving the attention products.">
-<meta property="og:type" content="website">
-<meta property="og:image" content="overview.png">
-<meta name="twitter:card" content="summary_large_image">
+    :root {
+      --cream:        #ffffff;
+      --paper:        #ffffff;
+      --ink:          #1a1814;
+      --ink-2:        #3d3830;
+      --ink-3:        #7a7060;
+      --rule:         #ddd8ce;
+      --accent:       #2d5a8e;
+      --accent-light: #e8f0f9;
+
+      --serif:  'EB Garamond', Georgia, serif;
+      --display:'Fraunces', Georgia, serif;
+      --mono:   'DM Mono', monospace;
+
+      --max-w: 1040px;
+      --side: clamp(1rem, 4vw, 4rem);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--serif);
+      font-size: clamp(16px, 1.8vw, 19px);
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ──────────────────────────────────────── */
+    header {
+      background: var(--cream);
+      border-bottom: 1px solid var(--rule);
+      padding: 5rem var(--side) 4rem;
+      text-align: center;
+    }
+
+    .venue-tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-light);
+      border: 1px solid #c5d9f0;
+      border-radius: 2px;
+      padding: 0.25em 0.75em;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: clamp(1.9rem, 4.5vw, 3rem);
+      line-height: 1.2;
+      color: var(--ink);
+      max-width: 820px;
+      margin: 0 auto 2rem;
+      letter-spacing: -0.01em;
+    }
+
+    .title-accent { color: var(--accent); }
+
+    .authors {
+      font-size: 1.12rem;
+      color: var(--ink-2);
+      margin-bottom: 0.4rem;
+    }
+    .authors a {
+      color: var(--ink-2);
+      text-decoration: underline;
+      text-decoration-color: var(--rule);
+      transition: color 0.2s, text-decoration-color 0.2s;
+    }
+    .authors a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+
+    .affiliation {
+      font-size: 1.16rem;
+      color: var(--ink-3);
+      margin-bottom: 2.5rem;
+    }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .buttons {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 0.55em 1.2em;
+      border-radius: 2px;
+      border: 1px solid;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    .btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+    .btn-primary:hover { background: var(--accent); border-color: var(--accent); }
+    .btn-secondary { background: transparent; color: var(--ink); border-color: var(--rule); }
+    .btn-secondary:hover { border-color: var(--ink); }
+    .btn-disabled { opacity: 0.55; pointer-events: none; }
+
+    /* ── Nav ─────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(253,252,249,0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--rule);
+      padding: 0 var(--side);
+      display: flex;
+      justify-content: center;
+    }
+    nav ul { display: flex; gap: 0.25rem; list-style: none; }
+    nav a {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      text-decoration: none;
+      padding: 0.9em 0.9em;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    nav a:hover, nav a.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+    /* ── Main ────────────────────────────────────────── */
+    main {
+      width: min(100%, var(--max-w));
+      margin: 0 auto;
+      padding: 0 var(--side);
+    }
+
+    section {
+      padding: 4rem 0;
+      border-bottom: 1px solid var(--rule);
+    }
+    section:last-child { border-bottom: none; }
+
+    h2 {
+      font-family: var(--display);
+      font-weight: 400;
+      font-size: 1.5rem;
+      color: var(--ink);
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.01em;
+    }
+
+    h3 {
+      font-family: var(--mono);
+      font-size: 1rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      margin-top: 2rem;
+    }
+
+    p { margin-bottom: 1.1em; }
+    p:last-child { margin-bottom: 0; }
+
+    /* ── Abstract ────────────────────────────────────── */
+    .abstract-box {
+      background: var(--cream);
+      border-left: 3px solid var(--accent);
+      padding: 1.25rem 1.75rem;
+      border-radius: 0 2px 2px 0;
+    }
+    .abstract-box summary {
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.5rem 0;
+    }
+    .abstract-box summary::-webkit-details-marker { display: none; }
+    .abstract-box summary::after { content: 'Expand'; font-family: var(--mono); font-size: 0.72rem; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+    .abstract-box[open] summary::after { content: 'Collapse'; }
+    .abstract-body { padding-top: 0.5rem; }
+
+    /* ── Figures ─────────────────────────────────────── */
+    figure { margin: 2.5rem 0; text-align: center; }
+
+    .figure-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5rem;
+      align-items: start;
+      margin: 2.5rem 0;
+    }
+    .figure-row figure { margin: 0; }
+    .figure-row figure img { width: 100%; }
+
+    figure img {
+      width: min(100%, 860px);
+      border: none;
+      border-radius: 0;
+      display: block;
+      margin: 0 auto;
+    }
+    .figure-small img { width: min(100%, 520px); }
+
+    figcaption {
+      font-family: var(--serif);
+      font-size: 0.95rem;
+      color: var(--ink-3);
+      margin-top: 0.75rem;
+      line-height: 1.5;
+      text-align: left;
+    }
+    figcaption strong { font-family: var(--serif); font-size: 0.95rem; color: var(--ink-2); }
+
+    table {
+      font-size: 0.95rem;
+    }
+
+    /* ── Step list (divide & conquer) ────────────────── */
+    .step-list {
+      list-style: none;
+      counter-reset: step;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .step-list li {
+      counter-increment: step;
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+    }
+    .step-list li::before {
+      content: counter(step);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--paper);
+      background: var(--accent);
+      border-radius: 50%;
+      min-width: 1.6em;
+      height: 1.6em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.2em;
+    }
+
+
+    /* ── Complexity callout ───────────────────────────── */
+    .complexity-callout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 2rem 0;
+    }
+    .complexity-callout .stat {
+      background: var(--paper);
+      padding: 1.5rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .complexity-callout .stat.highlight { background: var(--accent-light); }
+    .complexity-callout .stat-label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .complexity-callout .stat-value {
+      font-family: var(--serif);
+      font-size: 1.6rem;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+    .complexity-callout .stat.highlight .stat-value { color: var(--accent); }
+
+    /* ── Method grid ─────────────────────────────────── */
+    .method-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 0;
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 2rem 0;
+      font-size: 0.83rem;
+    }
+    .method-grid .cell {
+      padding: 0.75em 1em;
+      border-right: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+    }
+    .method-grid .cell:nth-child(4n) { border-right: none; }
+    .method-grid .cell.header {
+      background: var(--cream);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .method-grid .cell.ours-cell { background: var(--accent-light); font-weight: 500; }
+
+    /* ── Results stat grid (MIRA style) ──────────────── */
+    .results-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 2rem 0;
+    }
+    .results-stats .rstat {
+      background: var(--paper);
+      padding: 1.5rem 1.25rem;
+      text-align: center;
+    }
+    .results-stats .rstat-value {
+      font-family: var(--display);
+      font-size: 2.1rem;
+      font-weight: 300;
+      line-height: 1;
+      color: var(--accent);
+      margin-bottom: 0.4rem;
+    }
+    .results-stats .rstat-label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      line-height: 1.4;
+    }
+
+    /* ── Result headlines ────────────────────────────── */
+    .result-headlines {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 2rem 0;
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .result-headlines li {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--rule);
+      font-size: 0.97rem;
+    }
+    .result-headlines li:last-child { border-bottom: none; }
+    .result-headlines li:nth-child(odd) { background: var(--cream); }
+    .result-headlines .rh-tag {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      white-space: nowrap;
+      flex-shrink: 0;
+      padding-top: 0.15em;
+    }
+
+    /* ── Citation ────────────────────────────────────── */
+    .citation-wrap {
+      position: relative;
+      background: var(--cream);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      padding: 1.5rem;
+    }
+    .citation-block {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      line-height: 1.8;
+      overflow-x: auto;
+      white-space: pre;
+      color: var(--ink-2);
+    }
+    .copy-btn {
+      position: absolute;
+      top: 0.9rem;
+      right: 0.9rem;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      padding: 0.3em 0.75em;
+      cursor: pointer;
+      color: var(--ink-3);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .copy-btn:hover { color: var(--ink); border-color: var(--ink); }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 3rem var(--side);
+      font-size: 0.82rem;
+      color: var(--ink-3);
+      border-top: 1px solid var(--rule);
+      font-family: var(--mono);
+      letter-spacing: 0.04em;
+    }
+    footer a { color: var(--ink-3); text-decoration: underline; }
+    footer a:hover { color: var(--ink); }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: var(--cream);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      padding: 0.1em 0.4em;
+      color: var(--ink-2);
+    }
+
+    .katex { font-size: 1em; }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 640px) {
+      nav ul { overflow-x: auto; }
+      nav a { padding: 0.75em 0.6em; font-size: 0.65rem; }
+      .method-grid { grid-template-columns: 1fr 1fr; }
+      .method-grid .cell:nth-child(4n) { border-right: 1px solid var(--rule); }
+      .method-grid .cell:nth-child(2n) { border-right: none; }
+      .results-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .figure-row { grid-template-columns: 1fr; }
+      .complexity-callout { grid-template-columns: 1fr; }
+    }
+
+    /* ── Fade-in ─────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { opacity: 0; animation: fadeUp 0.55s ease forwards; }
+    .fade-up:nth-child(1) { animation-delay: 0.05s; }
+    .fade-up:nth-child(2) { animation-delay: 0.15s; }
+    .fade-up:nth-child(3) { animation-delay: 0.25s; }
+    .fade-up:nth-child(4) { animation-delay: 0.35s; }
+    .fade-up:nth-child(5) { animation-delay: 0.45s; }
+  </style>
 
 <style>
-  :root{
-    --panel:#FFF5F5;      /* fairmeta title-panel tint */
-    --brick:#C1121F;      /* accent */
-    --molten:#780000;
-    --deep:#003049;       /* headings */
-    --steel:#669BBC;
-    --ink:#1a1a1a;
-    --muted:#5a5f66;
-    --rule:#e6e1e1;
-    --maxw:860px;
-  }
-  *{box-sizing:border-box}
-  html{-webkit-text-size-adjust:100%}
-  body{
-    margin:0; padding:0 1.25rem 5rem;
-    font-family:"Charter","Bitstream Charter","Sitka Text",Cambria,Georgia,serif;
-    font-size:18px; line-height:1.62; color:var(--ink); background:#fff;
-  }
-  .wrap{max-width:var(--maxw); margin:0 auto}
-  h1,h2,h3,.sans{font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
-
-  /* ---- title panel (mirrors the paper's first page) ---- */
-  header.panel{
-    background:var(--panel); border-radius:18px;
-    padding:2.2rem 2.2rem 1.6rem; margin:2.5rem 0 2rem;
-  }
-  header.panel h1{
-    font-size:2.05rem; line-height:1.22; font-weight:800;
-    letter-spacing:-.015em; margin:0 0 .9rem; color:#111;
-  }
-  .authors{font-weight:650; font-size:1.02rem; margin:0 0 .35rem; line-height:1.5}
-  .authors a{color:inherit; text-decoration:none; border-bottom:1px solid rgba(0,0,0,.22)}
-  .authors a:hover{border-bottom-color:var(--brick); color:var(--brick)}
-  .affil{color:var(--muted); font-size:.98rem; margin:0}
-  .eqc{color:var(--muted); font-size:.86rem; margin:.15rem 0 0}
-
-  /* ---- link buttons ---- */
-  .links{display:flex; flex-wrap:wrap; gap:.6rem; margin:1.5rem 0 .2rem}
-  .btn{
-    display:inline-flex; align-items:center; gap:.5rem;
-    font-family:inherit; font-size:.93rem; font-weight:600;
-    padding:.55rem 1.05rem; border-radius:999px;
-    background:var(--deep); color:#fff; text-decoration:none;
-    transition:transform .12s ease, background .12s ease;
-  }
-  .btn:hover{background:var(--brick); transform:translateY(-1px)}
-  .btn svg{width:1.02em; height:1.02em; fill:currentColor}
-
-  /* ---- sections ---- */
-  section{margin:3rem 0}
-  h2{
-    font-size:1.32rem; font-weight:750; color:var(--deep);
-    margin:0 0 .9rem; letter-spacing:-.01em;
-  }
-  p{margin:0 0 1.05rem}
-  figure{margin:1.6rem 0; text-align:center}
-  figure img{max-width:100%; height:auto; border-radius:8px}
-  figcaption{
-    font-size:.9rem; color:var(--muted); margin-top:.7rem;
-    text-align:left; line-height:1.55;
-  }
-
-  /* ---- headline numbers ---- */
-  .stats{
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
-    gap:.9rem; margin:1.5rem 0;
-  }
-  .stat{
-    background:var(--panel); border-radius:12px; padding:1.1rem 1rem;
-    border-left:3px solid var(--brick);
-  }
-  .stat .n{
-    font-family:"Inter",sans-serif; font-size:1.65rem; font-weight:800;
-    color:var(--molten); line-height:1.1; display:block;
-  }
-  .stat .l{font-size:.85rem; color:var(--muted); margin-top:.3rem; display:block; line-height:1.4}
-
-  /* ---- table ---- */
-  .tablewrap{overflow-x:auto; margin:1.4rem 0}
-  table{border-collapse:collapse; width:100%; font-size:.92rem}
-  th,td{padding:.5rem .7rem; text-align:right; white-space:nowrap}
-  th:first-child,td:first-child{text-align:left}
-  thead th{
-    font-family:"Inter",sans-serif; font-weight:650; font-size:.85rem;
-    color:var(--deep); border-bottom:2px solid var(--deep);
-  }
-  tbody tr{border-bottom:1px solid var(--rule)}
-  tbody tr.ours{background:var(--panel); font-weight:650}
-  tbody tr.ours td:first-child{color:var(--molten)}
-  .tnote{font-size:.85rem; color:var(--muted); margin-top:.5rem}
-
-  /* ---- bibtex ---- */
-  .bibhead{display:flex; align-items:center; justify-content:space-between; gap:1rem}
-  pre{
-    background:#f7f7f8; border:1px solid var(--rule); border-radius:10px;
-    padding:1rem 1.1rem; overflow-x:auto;
-    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    font-size:.83rem; line-height:1.55; margin:.8rem 0 0;
-  }
-  .copy{
-    font-family:"Inter",sans-serif; font-size:.82rem; font-weight:600;
-    padding:.35rem .8rem; border-radius:999px; cursor:pointer;
-    border:1px solid var(--rule); background:#fff; color:var(--muted);
-  }
-  .copy:hover{border-color:var(--brick); color:var(--brick)}
-
-  footer{
-    border-top:1px solid var(--rule); margin-top:3.5rem; padding-top:1.3rem;
-    font-size:.87rem; color:var(--muted);
-  }
-  a{color:var(--brick)}
-
-  @media (max-width:600px){
-    body{font-size:17px}
-    header.panel{padding:1.5rem 1.25rem 1.2rem; border-radius:14px}
-    header.panel h1{font-size:1.55rem}
-  }
+  /* results table, in the same visual language as .method-grid */
+  .data-table { width: 100%; border-collapse: collapse; margin: 2rem 0;
+                font-family: var(--serif); font-size: 0.95rem; }
+  .data-table th { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em;
+                   text-transform: uppercase; color: var(--ink-3); font-weight: 400;
+                   text-align: right; padding: 0.7em 0.8em;
+                   border-bottom: 1px solid var(--rule); }
+  .data-table th:first-child, .data-table td:first-child { text-align: left; }
+  .data-table td { text-align: right; padding: 0.6em 0.8em;
+                   border-bottom: 1px solid var(--rule); }
+  .data-table tr.ours td { background: var(--accent-light); font-weight: 500; }
+  .data-table tr.ours td:first-child { color: var(--accent); }
+  .table-note { font-size: 0.85rem; color: var(--ink-3); margin-top: -1rem; }
+  .eqc { font-size: 0.9rem; color: var(--ink-3); margin: -0.1rem 0 2.4rem; }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-<header class="panel">
-  <h1>Spend Bits Where Queries Look:<br>KV Cache Vector Quantization with Attention-Preserving Transforms</h1>
-  <p class="authors">
-    Samuel Fern&aacute;ndez-Mendui&ntilde;a<sup>*</sup>,
-    Amir Ziashahabi<sup>*</sup>,
-    Eduardo Pavez,
-    Antonio Ortega,
+<header>
+  <div class="fade-up">
+    <span class="venue-tag">Preprint &middot; 2026</span>
+  </div>
+  <h1 class="fade-up">
+    Spend Bits Where Queries Look: <span class="title-accent">KV Cache Vector
+    Quantization</span> with Attention-Preserving Transforms
+  </h1>
+  <p class="authors fade-up">
+    <a href="https://sf219.github.io" target="_blank">Samuel Fern&aacute;ndez-Mendui&ntilde;a</a><sup>*</sup>&ensp;&middot;&ensp;
+    <a href="https://github.com/Amir-zsh" target="_blank">Amir Ziashahabi</a><sup>*</sup>&ensp;&middot;&ensp;
+    <a href="https://epavez.github.io" target="_blank">Eduardo Pavez</a>&ensp;&middot;&ensp;
+    <a href="https://sites.google.com/usc.edu/stac-lab/home" target="_blank">Antonio Ortega</a>&ensp;&middot;&ensp;
     Salman Avestimehr
   </p>
-  <p class="affil">Department of Electrical and Computer Engineering, University of Southern California</p>
-  <p class="eqc"><sup>*</sup>Equal contribution</p>
-
-  <nav class="links">
-    <!-- TODO: replace ARXIV_ID once the paper is posted -->
-    <a class="btn" href="https://arxiv.org/abs/ARXIV_ID">
-      <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2zm8 1.5V8h4.5L14 3.5zM8 12h8v1.5H8V12zm0 4h8v1.5H8V16z"/></svg>
+  <p class="affiliation fade-up">University of Southern California</p>
+  <p class="eqc fade-up"><sup>*</sup>Equal contribution</p>
+  <div class="buttons fade-up">
+    <a class="btn btn-primary" href="https://arxiv.org/abs/ARXIV_ID" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       Paper
     </a>
-    <a class="btn" href="https://github.com/Amir-zsh/nova-kv">
-      <svg viewBox="0 0 24 24"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 1.8 2.7 1.3 3.4 1 .1-.7.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6 4.6-1.5 7.8-5.8 7.8-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+    <a class="btn btn-secondary" href="https://github.com/Amir-zsh/nova-kv" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 1.8 2.7 1.3 3.4 1 .1-.7.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6 4.6-1.5 7.8-5.8 7.8-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
       Code
     </a>
-    <a class="btn" href="#bibtex">
-      <svg viewBox="0 0 24 24"><path d="M4 4h16v2H4V4zm0 5h16v2H4V9zm0 5h10v2H4v-2z"/></svg>
+    <a class="btn btn-secondary" href="#citation">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg>
       BibTeX
     </a>
-  </nav>
+  </div>
 </header>
 
-<section>
-  <h2>Overview</h2>
+<nav>
+  <ul>
+    <li><a href="#abstract">Abstract</a></li>
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#method">Method</a></li>
+    <li><a href="#results">Results</a></li>
+    <li><a href="#citation">Citation</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<section id="abstract">
+  <details class="abstract-box" open>
+    <summary>Abstract</summary>
+    <div class="abstract-body">
+      <p>
+        Long-context LLM decoding reads the key&ndash;value (KV) cache at every step.
+        Loading it takes longer than computing attention over it, so throughput is
+        bandwidth-bound, and reducing the cache size raises both decoding speed and
+        serving capacity. The challenge is to shrink the cache while preserving the
+        attention products, keeping reconstruction cheap, and using a fixed per-token
+        bit count. At two bits per element the most competitive methods rely on
+        orthogonal transforms, but these are either data-oblivious or use the query
+        statistics without deriving the transform from a distortion criterion. We
+        formulate KV cache quantization as a transform coding problem whose distortion
+        is the error in the attention products, and derive closed-form optimal
+        transforms for keys and values from calibration statistics. The optimal key
+        transform is <em>not</em> orthogonal, and it satisfies a generalized Parseval
+        relation that turns the attention-aware distortion into ordinary mean-squared
+        error in the transform domain &mdash; so MSE-optimal vector quantizers apply
+        directly. To meet the fixed-width layout requirement, we show that grouping
+        coefficients into equal-volume partitions lets equal-size codebooks attain the
+        variable-rate optimum. At two bits per element, NOVA-KV recovers most of the
+        long-context retrieval accuracy lost by scalar quantization, at comparable
+        throughput.
+      </p>
+    </div>
+  </details>
+</section>
+
+<section id="problem">
+  <h2>Why the cache, and why not MSE</h2>
   <p>
-    Long-context LLM decoding reads the key&ndash;value (KV) cache at every step. Loading it takes
-    longer than computing attention over it, so throughput is <strong>bandwidth-bound</strong> &mdash;
-    shrinking the cache raises both decoding speed and serving capacity.
+    Every decoding step reads the whole KV cache from memory. Because loading it costs
+    more than the attention arithmetic performed on it, decoding is bound by memory
+    bandwidth: at batch 64 on 8&times;H100, reading the cache is <strong>76%</strong> of
+    the step &mdash; more than six times the cost of loading every weight in the model.
   </p>
+  <figure class="figure-small">
+    <img src="decode.png" alt="Measured per-step decode time by phase for Qwen3-8B, showing KV cache loading dominating at large batch size.">
+    <figcaption>Measured per-step decode time, Qwen3-8B, 8&times;H100, 16K context.</figcaption>
+  </figure>
   <p>
-    The catch is <em>what</em> to preserve. Standard quantizers minimize the error in the stored
-    keys and values, but attention never reads them directly: it reads them through the
-    key&ndash;query inner products. <strong>NOVA-KV</strong> formulates KV cache compression as a
-    transform coding problem whose distortion is the error in the <em>attention products</em>, and
-    derives the optimal transforms in closed form from calibration statistics.
+    The subtler point is <em>what</em> to preserve. Standard quantizers minimize the
+    error in the stored keys and values, but attention never reads them directly: it
+    reads them through the key&ndash;query inner products. Two reconstructions with the
+    same MSE can distort the attention logits very differently, so MSE is the wrong
+    fidelity criterion.
+  </p>
+</section>
+
+<section id="method">
+  <h2>Transform coding for the attention products</h2>
+  <p>
+    We treat cache compression as transform coding whose distortion is the error in the
+    attention products, and solve for the transform in closed form.
   </p>
   <figure>
-    <img src="overview.png" alt="NOVA-KV pipeline: calibration produces the transforms, the volume-equalized grouping and the codebooks; at inference each key is transformed and encoded once on the write path, while the read path is a table lookup.">
+    <img src="overview.png" alt="NOVA-KV pipeline: offline calibration produces the transforms, grouping and codebooks; online, keys are transformed and encoded once on the write path while the read path is a table lookup.">
     <figcaption>
-      <strong>The method.</strong> Calibration yields the transforms, the volume-equalized grouping,
-      and the codebooks. Online, each new key is transformed and encoded once on the write path;
+      Calibration yields the transforms, the volume-equalized grouping and the
+      codebooks. Online, each key is transformed and encoded once on the write path;
       the read path &mdash; paid at every decoding step &mdash; is a table lookup.
     </figcaption>
   </figure>
+
+  <h3>The optimal transform is not orthogonal</h3>
+  <p>
+    Minimizing the query-weighted distortion gives a transform that first whitens by the
+    query second-moment matrix and only then decorrelates. Every prior method constrains
+    the transform to be a rotation; we show that is strictly suboptimal whenever the
+    query statistics are anisotropic. Its inverse folds into the query, so
+    non-orthogonality costs nothing at decode time.
+  </p>
+
+  <h3>A generalized Parseval relation</h3>
+  <p>
+    That transform satisfies a generalized Parseval relation: the attention-aware
+    distortion becomes ordinary MSE in the transform domain. This is what lets any
+    off-the-shelf MSE-optimal vector quantizer act directly on the coefficients, with no
+    correction term.
+  </p>
+
+  <h3>Equal-volume grouping recovers the coding gain</h3>
+  <p>
+    Optimal bit allocation wants codebooks of different sizes, which fixed-width cache
+    layouts forbid. We show that partitioning the coefficients into groups of equal
+    variance-volume makes equal-size codebooks attain the variable-rate optimum, so the
+    coding gain survives the layout constraint.
+  </p>
+
+  <div class="complexity-callout">
+    <div class="stat highlight">
+      <div class="stat-label">Read path</div>
+      <div class="stat-value">table lookup + one multiply</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Write path</div>
+      <div class="stat-value">once per token</div>
+    </div>
+  </div>
 </section>
 
-<section>
-  <h2>Three results</h2>
-  <p>
-    <strong>The optimal key transform is not orthogonal.</strong> It whitens by the query
-    second-moment matrix before decorrelating. Every prior method constrains the transform to be a
-    rotation, which we show is strictly suboptimal whenever the query statistics are anisotropic.
-  </p>
-  <p>
-    <strong>It satisfies a generalized Parseval relation.</strong> The attention-aware distortion
-    becomes ordinary mean-squared error in the transform domain, so any off-the-shelf MSE-optimal
-    vector quantizer can be applied directly to the coefficients.
-  </p>
-  <p>
-    <strong>Equal-volume grouping recovers the coding gain.</strong> Fixed-width cache layouts
-    forbid the unequal codebooks that optimal bit allocation needs. Grouping coefficients into
-    equal-volume partitions attains the variable-rate optimum with a single codebook size.
-  </p>
-</section>
-
-<section>
+<section id="results">
   <h2>Results</h2>
-  <div class="stats">
-    <div class="stat"><span class="n">2.22</span><span class="l">bits per KV element</span></div>
-    <div class="stat"><span class="n">75.4</span><span class="l">RULER NIAH @128K<br>(OSCAR: 25.3)</span></div>
-    <div class="stat"><span class="n">&minus;1.8</span><span class="l">points vs BF16<br>on reasoning &amp; code</span></div>
+
+  <div class="results-stats">
+    <div class="rstat">
+      <div class="rstat-value">2.22</div>
+      <div class="rstat-label">bits per KV element</div>
+    </div>
+    <div class="rstat">
+      <div class="rstat-value">75.4</div>
+      <div class="rstat-label">NIAH @128K<br>(OSCAR: 25.3)</div>
+    </div>
+    <div class="rstat">
+      <div class="rstat-value">&minus;1.8</div>
+      <div class="rstat-label">points vs BF16<br>reasoning &amp; code</div>
+    </div>
   </div>
 
+  <h3>Long-context retrieval</h3>
   <p>
-    Long-context retrieval is where the methods separate. On Qwen3-8B at 128K context, scalar
-    baselines collapse while NOVA-KV tracks the uncompressed reference:
+    Retrieval is where the methods separate. On Qwen3-8B the scalar baselines collapse
+    as context grows, while NOVA-KV tracks the uncompressed reference:
   </p>
-
-  <div class="tablewrap">
-  <table>
+  <table class="data-table">
     <thead>
       <tr><th>Method</th><th>BPE</th><th>8K</th><th>32K</th><th>64K</th><th>128K</th></tr>
     </thead>
@@ -233,52 +695,39 @@
       <tr class="ours"><td>NOVA-KV (ours)</td><td>2.22</td><td>99.4</td><td>96.0</td><td>76.4</td><td>75.4</td></tr>
     </tbody>
   </table>
-  </div>
-  <p class="tnote">RULER NIAH mean accuracy (%), Qwen3-8B. Full results for four models, including
-  Llama-3.1-8B and GPT-OSS-20B, are in the paper.</p>
+  <p class="table-note">RULER NIAH mean accuracy (%), Qwen3-8B.</p>
 
-  <figure>
-    <img src="decode.png" alt="Measured per-step decode time by phase for Qwen3-8B on 8 H100s, showing KV cache loading dominating at large batch size.">
-    <figcaption>
-      <strong>Why this matters.</strong> Measured per-step decode time for Qwen3-8B
-      (8&times;H100, 16K context). At batch 64, reading the KV cache is 76% of the step &mdash;
-      more than six times the cost of loading every weight in the model.
-    </figcaption>
-  </figure>
+  <h3>Robustness across architectures</h3>
+  <p>
+    The gap widens on models where orthogonal transforms struggle. On GPT-OSS-20B,
+    NOVA-KV preserves most of the BF16 accuracy on every generation benchmark
+    (mean <strong>72.4</strong> against 76.5), while OSCAR collapses to a mean of
+    <strong>13.9</strong> &mdash; scoring 0.0 on both LiveCodeBench&nbsp;v6 and AIME25 &mdash;
+    and TurboQuant falls to 37.4. Across all four models tested, NOVA-KV stays close to
+    BF16 while the robustness of the orthogonal-transform baselines varies considerably.
+  </p>
 </section>
 
-<section id="bibtex">
-  <div class="bibhead">
-    <h2 style="margin:0">BibTeX</h2>
-    <button class="copy" onclick="copyBib(this)">Copy</button>
-  </div>
-<pre id="bib">@article{fernandezmenduina2026novakv,
+<section id="citation">
+  <h2>Citation</h2>
+  <div class="citation-wrap">
+<div class="citation-block">@article{fernandezmenduina2026novakv,
   title   = {Spend Bits Where Queries Look: KV Cache Vector Quantization
              with Attention-Preserving Transforms},
   author  = {Fern\'andez-Mendui\~na, Samuel and Ziashahabi, Amir and
              Pavez, Eduardo and Ortega, Antonio and Avestimehr, Salman},
   journal = {arXiv preprint arXiv:ARXIV_ID},
   year    = {2026}
-}</pre>
+}</div>
+  </div>
 </section>
 
+</main>
+
 <footer>
-  Correspondence: <a href="mailto:samuelf9@usc.edu">samuelf9@usc.edu</a>,
-  <a href="mailto:ziashaha@usc.edu">ziashaha@usc.edu</a>
-  &nbsp;&middot;&nbsp; University of Southern California
+  Samuel Fern&aacute;ndez-Mendui&ntilde;a &middot; Amir Ziashahabi &middot;
+  University of Southern California
 </footer>
 
-</div>
-
-<script>
-function copyBib(btn){
-  const t = document.getElementById('bib').innerText;
-  navigator.clipboard.writeText(t).then(()=>{
-    const old = btn.textContent;
-    btn.textContent = 'Copied';
-    setTimeout(()=>{btn.textContent = old;}, 1600);
-  });
-}
-</script>
 </body>
 </html>
