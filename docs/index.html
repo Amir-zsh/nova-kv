@@ -159,6 +159,7 @@
       padding: 0.9em 0.9em;
       border-bottom: 2px solid transparent;
       transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
     }
     nav a:hover, nav a.active { color: var(--ink); border-bottom-color: var(--accent); }
 
@@ -479,9 +480,7 @@
 <nav>
   <ul>
     <li><a href="#abstract">Abstract</a></li>
-    <li><a href="#problem">KV cache</a></li>
-    <li><a href="#requirements">Requirements</a></li>
-    <li><a href="#mse">MSE</a></li>
+    <li><a href="#problem">Motivation</a></li>
     <li><a href="#method">Method</a></li>
     <li><a href="#results">Results</a></li>
     <li><a href="#citation">Citation</a></li>
@@ -532,10 +531,10 @@
     <img src="decode.png" alt="Measured per-step decode time by phase for Qwen3-8B at batch sizes 1, 4, 16 and 64, showing KV cache loading growing to dominate the step.">
     <figcaption>
       <strong>Measured per-step decode time, Qwen3-8B, 8&times;H100, 16K context.</strong>
-      Parameter loading is flat in batch size; KV loading is not. At batch 64, reading
-      the cache is <strong>76%</strong> of the step, more than six times the cost
-      of loading every weight in the model. Shrinking the cache therefore buys decoding
-      speed and serving capacity at the same time.
+      Parameter loading is flat in batch size. At batch 64, reading the cache is
+      <strong>76%</strong> of the step, more than six times the cost of loading the model
+      weights. Compressing the cache buys decoding speed and serving capacity at the
+      same time.
     </figcaption>
   </figure>
 </section>
@@ -571,30 +570,23 @@
 <section id="mse">
   <h2>What's wrong with MSE?</h2>
   <p>
-    Standard quantizers minimize the error in the stored keys and values. For the values
-    that is the right thing to do: they enter the output through the attention-weighted
-    sum, and the transform that minimizes the error in that sum turns out to be
-    orthogonal, so ordinary MSE in the transform domain is the correct objective.
-    The keys are the problem. Attention never reads a key directly: it reads it through
-    the key&ndash;query inner product. Two reconstructions with identical MSE can distort
-    the attention logits by very different amounts, depending on whether their error
-    happens to land in directions the queries actually look along.
+    Standard quantizers minimize the error in the stored keys and values. Keys are read
+    through the key&ndash;query inner product. Two reconstructions with identical MSE can
+    distort the attention logits by very different amounts, depending on whether their
+    error lands in directions the queries look along.
   </p>
   <div class="figure-row">
     <figure>
       <img src="scatter_dist.png" alt="Scatterplot of keys and queries in two dimensions, with the query covariance drawn as a dashed ellipse.">
       <figcaption>
-        Keys and queries occupy different directions, and the query covariance (dashed)
-        is far from isotropic. Some directions are read hard; others are barely read at
-        all.
+        Distribution of keys and queries, together with query covariance (dashed).
       </figcaption>
     </figure>
     <figure>
       <img src="scatter_err.png" alt="Scatterplot of quantization error under the KLT versus under our transform, against the same query covariance ellipse.">
       <figcaption>
-        Quantization error at <em>equal rate</em>. The KLT, which is MSE-optimal, spreads
-        its error isotropically. Ours steers the error away from the high-energy query
-        directions: same bit budget, less damage to the logits.
+        Quantization error. The KLT spreads error isotropically. Ours steers the error
+        away from the high-energy query directions.
       </figcaption>
     </figure>
   </div>
@@ -611,16 +603,10 @@
     <figcaption>
       Each key and value is transformed and encoded <strong>once</strong>, on the write
       path. The read path, paid at <em>every</em> decoding step, is a codebook lookup
-      plus one multiply. The inverse key transform folds into the query, so the cache is
-      never multiplied by anything at read time, and what sits in memory is a
-      fixed-width page of 8-bit indices.
+      plus one multiply.
       <span class="zoom-hint">&nbsp;&middot;&nbsp; click to enlarge</span>
     </figcaption>
   </figure>
-
-  <p>
-    Three results make this work.
-  </p>
 
   <h3>The optimal transform is not orthogonal</h3>
   <p>
