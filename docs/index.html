@@ -436,6 +436,14 @@
   }
   .req-list li::before    { content: "R" counter(item); }
   .method-list li::before { content: "M" counter(item); }
+  /* fragments, not sentences: the subsections carry the prose */
+  .chain li { align-items: baseline; }
+  .chain li span::before { content: ""; }
+  .chain li:not(:first-child) span::before {
+    content: "\2192\00a0";           /* -> */
+    color: var(--ink-3);
+  }
+  .chain { gap: 0.7rem; }
   @media (max-width: 640px) {
     .tag-list li { gap: 0.75rem; }
   }
@@ -613,22 +621,11 @@
 
 <section id="method">
   <h2>Transform coding and VQ for the attention products</h2>
-  <ol class="tag-list method-list">
-    <li><span>
-      Distortion is defined on the attention products rather than on the stored vectors.
-    </span></li>
-    <li><span>
-      The optimal key transform is therefore not orthogonal: it whitens by the query
-      second moment, then decorrelates.
-    </span></li>
-    <li><span>
-      That transform satisfies a generalized Parseval relation, so ordinary MSE-optimal
-      vector quantizers apply directly in the transform domain.
-    </span></li>
-    <li><span>
-      Equal-volume grouping makes fixed-width codebooks attain the variable-rate
-      optimum, so VQ survives the paged layout.
-    </span></li>
+  <ol class="tag-list method-list chain">
+    <li><span>Distortion on the attention products, not the stored vectors</span></li>
+    <li><span>the optimal key transform is not orthogonal</span></li>
+    <li><span>generalized Parseval, so ordinary MSE-optimal VQ applies</span></li>
+    <li><span>equal-volume grouping fits VQ into fixed-width storage</span></li>
   </ol>
   <figure class="figure-wide">
     <div class="scroller">
