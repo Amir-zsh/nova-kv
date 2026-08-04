@@ -554,13 +554,11 @@
     </span></li>
     <li><span>
       <strong>Read cost.</strong> The cache is read at every decoding step, so any
-      per-element work at read time is paid over the whole cache, every step. A
-      transform that has to be applied when reading defeats the compression.
+      per-element work at read time is paid over the whole cache, every step.
     </span></li>
     <li><span>
       <strong>Fixed-width layout.</strong> Serving engines page the cache, so every
-      token must occupy the same number of bits. Rate&ndash;distortion theory hands you
-      variable-rate codes; the layout forbids them.
+      token must occupy the same number of bits.
     </span></li>
   </ol>
   <p>
