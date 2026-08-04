@@ -528,7 +528,7 @@
   <p>
     A transformer caches one key and one value vector per token, per layer, per head.
     This cache grows with context length and with batch size, and every decoding step
-    must read all of it back from memory. Modern kernels compute attention faster than
+    must read all of it from memory. Modern kernels compute attention faster than
     the cache can be loaded, so once the context is long, the cache becomes the
     bottleneck.
   </p>
@@ -612,13 +612,12 @@
     </figcaption>
   </figure>
 
-  <h3>Non-orthogonal transform</h3>
+  <h3>Non-orthogonal transforms</h3>
   <p>
     Minimizing the query-weighted distortion gives a transform that first whitens by the
     query second-moment matrix and then decorrelates. Prior methods constrain the
-    transform to be a rotation; we show that is strictly suboptimal whenever the query
-    statistics are anisotropic. Its inverse folds into the query, so non-orthogonality
-    costs nothing at decode time.
+    transform to be a rotation; we show that this is strictly suboptimal whenever the
+    query statistics are anisotropic.
   </p>
 
   <h3>A generalized Parseval relation</h3>
