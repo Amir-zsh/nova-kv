@@ -533,8 +533,7 @@
       <strong>Measured per-step decode time, Qwen3-8B, 8&times;H100, 16K context.</strong>
       Parameter loading is flat in batch size. At batch 64, reading the cache is
       <strong>76%</strong> of the step, more than six times the cost of loading the model
-      weights. Compressing the cache buys decoding speed and serving capacity at the
-      same time.
+      weights. Compressing the cache buys decoding speed and serving capacity.
     </figcaption>
   </figure>
 </section>
@@ -593,7 +592,7 @@
 </section>
 
 <section id="method">
-  <h2>Transform coding for the attention products</h2>
+  <h2>Transform coding and VQ for the attention products</h2>
   <figure class="figure-wide">
     <div class="scroller">
       <a href="panel_pipeline.png" target="_blank" title="Open full resolution">
@@ -608,21 +607,33 @@
     </figcaption>
   </figure>
 
-  <h3>The optimal transform is not orthogonal</h3>
+  <h3>Non-orthogonal transform</h3>
   <p>
     Minimizing the query-weighted distortion gives a transform that first whitens by the
-    query second-moment matrix and only then decorrelates. Every prior method constrains
-    the transform to be a rotation; we show that is strictly suboptimal whenever the
-    query statistics are anisotropic. Its inverse folds into the query, so
-    non-orthogonality costs nothing at decode time.
+    query second-moment matrix and then decorrelates. Prior methods constrain the
+    transform to be a rotation; we show that is strictly suboptimal whenever the query
+    statistics are anisotropic. Its inverse folds into the query, so non-orthogonality
+    costs nothing at decode time.
   </p>
 
   <h3>A generalized Parseval relation</h3>
   <p>
     That transform satisfies a generalized Parseval relation: the attention-aware
-    distortion becomes ordinary MSE in the transform domain. This is what lets any
-    off-the-shelf MSE-optimal vector quantizer act directly on the coefficients, with no
-    correction term.
+    distortion becomes ordinary MSE in the transform domain. As a result, we can use any
+    off-the-shelf MSE-optimal vector quantizer.
+  </p>
+
+  <h3>Why VQ</h3>
+  <p>
+    Serving fixes the layout: every token must occupy the same number of bits, and rate
+    cannot be reallocated across entries, so the quantizer has to minimize distortion at
+    a fixed rate. Vector quantization does this by quantizing small groups of
+    coefficients jointly. It also keeps the read path cheap, since reconstruction is a
+    codebook lookup plus one multiply to restore the per-token scale, which fuses into
+    the attention kernel. And the choice matters at this rate: scalar quantizers are
+    suboptimal at low rates, while quantizing in <em>g</em> dimensions recovers part of
+    that loss. With VQ fixed, the only remaining degree of freedom is the partition, that
+    is, how the coefficients are grouped.
   </p>
 
   <h3>Equal-volume grouping recovers the coding gain</h3>
@@ -655,8 +666,8 @@
 
   <h3>Long-context retrieval</h3>
   <p>
-    Retrieval is where the methods separate. On Qwen3-8B the scalar baselines collapse
-    as context grows, while NOVA-KV tracks the uncompressed reference:
+    On Qwen3-8B the scalar baselines collapse as context grows, while NOVA-KV tracks
+    the uncompressed reference:
   </p>
   <table class="data-table">
     <thead>
@@ -673,8 +684,8 @@
 
   <h3>Throughput</h3>
   <p>
-    Accuracy is only half the claim: a smaller cache has to actually decode faster. We
-    measure decode throughput in SGLang, excluding time to first token.
+    A smaller cache leads to faster decoding. We measure decode throughput in SGLang,
+    excluding time to first token.
   </p>
   <figure class="figure-wide">
     <div class="scroller">
@@ -687,9 +698,8 @@
       <strong>1.7&ndash;3.4&times;</strong> on Qwen3-4B, with the larger factors at the
       longer inputs. The factor is smaller on GPT-OSS-20B (1.1&ndash;1.5&times;), whose
       sliding-window layers leave less cache to compress. Against OSCAR at the same rate
-      the two arms are within a few percent, so the accuracy gains below are not bought
-      with speed. At 90K the BF16 cache admits at most batch&nbsp;4 on either Qwen model,
-      while both 2-bit arms still serve batch&nbsp;16.
+      the two arms are within a few percent. At 90K the BF16 cache admits at most
+      batch&nbsp;4 on either Qwen model, while both 2-bit arms serve batch&nbsp;16.
     </figcaption>
   </figure>
 
@@ -697,10 +707,9 @@
   <p>
     The gap widens on models where orthogonal transforms struggle. On GPT-OSS-20B,
     NOVA-KV preserves most of the BF16 accuracy on every generation benchmark
-    (mean <strong>72.4</strong> against 76.5), while OSCAR collapses to a mean of
-    <strong>13.9</strong>, scoring 0.0 on both LiveCodeBench&nbsp;v6 and AIME25,
-    and TurboQuant falls to 37.4. Across all four models tested, NOVA-KV stays close to
-    BF16 while the robustness of the orthogonal-transform baselines varies considerably.
+    (mean <strong>72.4</strong> against 76.5). Across all four models tested, NOVA-KV
+    stays close to BF16 while the robustness of the orthogonal-transform baselines
+    varies considerably.
   </p>
 </section>
 
