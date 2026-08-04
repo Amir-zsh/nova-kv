@@ -416,13 +416,13 @@
   .zoom-hint { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em;
                text-transform: uppercase; color: var(--ink-3); }
 
-  /* R1 / R2 / R3 requirement list; markers borrow the .venue-tag treatment */
-  .req-list { list-style: none; counter-reset: req; margin: 1.5rem 0 2rem;
+  /* Tagged lists: R1-R3 for the requirements, M1-M4 for the method chain.
+     Markers borrow the .venue-tag treatment so the page has one tag system. */
+  .tag-list { list-style: none; counter-reset: item; margin: 1.5rem 0 2rem;
               display: flex; flex-direction: column; gap: 1.1rem; }
-  .req-list li { counter-increment: req; display: flex; gap: 1.1rem;
+  .tag-list li { counter-increment: item; display: flex; gap: 1.1rem;
                  align-items: flex-start; }
-  .req-list li::before {
-    content: "R" counter(req);
+  .tag-list li::before {
     font-family: var(--mono);
     font-size: 0.72rem;
     letter-spacing: 0.08em;
@@ -434,8 +434,19 @@
     flex-shrink: 0;
     margin-top: 0.35em;
   }
+  .req-list li::before    { content: "R" counter(item); }
+  .method-list li::before { content: "M" counter(item); }
   @media (max-width: 640px) {
-    .req-list li { gap: 0.75rem; }
+    .tag-list li { gap: 0.75rem; }
+  }
+
+  /* one-line plain-language summary under the title */
+  .tagline {
+    font-size: 1.05rem;
+    color: var(--ink-2);
+    max-width: 680px;
+    margin: 0 auto 1.6rem;
+    line-height: 1.6;
   }
 </style>
 </head>
@@ -460,6 +471,10 @@
     <a href="https://www.avestimehr.com/" target="_blank">Salman Avestimehr</a>
   </p>
   <p class="affiliation fade-up">University of Southern California</p>
+  <p class="tagline fade-up">
+    NOVA-KV uses attention-aware non-orthogonal transforms and vector quantization to
+    preserve accuracy at approximately two bits per KV element.
+  </p>
   <p class="eqc fade-up"><sup>*</sup>Equal contribution</p>
   <div class="buttons fade-up">
     <a class="btn btn-primary" href="https://arxiv.org/abs/ARXIV_ID" target="_blank">
@@ -548,7 +563,7 @@
   <p>
     Three requirements constrain the design of KV cache compressors.
   </p>
-  <ol class="req-list">
+  <ol class="tag-list req-list">
     <li><span>
       <strong>Accuracy.</strong> What has to be preserved is downstream task
       performance. A quantizer cannot optimize that directly, so it needs a proxy.
@@ -598,6 +613,23 @@
 
 <section id="method">
   <h2>Transform coding and VQ for the attention products</h2>
+  <ol class="tag-list method-list">
+    <li><span>
+      Distortion is defined on the attention products rather than on the stored vectors.
+    </span></li>
+    <li><span>
+      The optimal key transform is therefore not orthogonal: it whitens by the query
+      second moment, then decorrelates.
+    </span></li>
+    <li><span>
+      That transform satisfies a generalized Parseval relation, so ordinary MSE-optimal
+      vector quantizers apply directly in the transform domain.
+    </span></li>
+    <li><span>
+      Equal-volume grouping makes fixed-width codebooks attain the variable-rate
+      optimum, so VQ survives the paged layout.
+    </span></li>
+  </ol>
   <figure class="figure-wide">
     <div class="scroller">
       <a href="panel_pipeline.png" target="_blank" title="Open full resolution">
