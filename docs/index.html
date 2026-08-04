@@ -436,14 +436,6 @@
   }
   .req-list li::before    { content: "R" counter(item); }
   .method-list li::before { content: "M" counter(item); }
-  /* fragments, not sentences: the subsections carry the prose */
-  .chain li { align-items: baseline; }
-  .chain li span::before { content: ""; }
-  .chain li:not(:first-child) span::before {
-    content: "\2192\00a0";           /* -> */
-    color: var(--ink-3);
-  }
-  .chain { gap: 0.7rem; }
   @media (max-width: 640px) {
     .tag-list li { gap: 0.75rem; }
   }
@@ -621,11 +613,22 @@
 
 <section id="method">
   <h2>Transform coding and VQ for the attention products</h2>
-  <ol class="tag-list method-list chain">
-    <li><span>Distortion on the attention products, not the stored vectors</span></li>
-    <li><span>the optimal key transform is not orthogonal</span></li>
-    <li><span>generalized Parseval, so ordinary MSE-optimal VQ applies</span></li>
-    <li><span>equal-volume grouping fits VQ into fixed-width storage</span></li>
+  <ol class="tag-list method-list">
+    <li><span>
+      Distortion is defined on the attention products rather than on the stored vectors.
+    </span></li>
+    <li><span>
+      The optimal key transform is therefore not orthogonal: it whitens by the query
+      second moment, then decorrelates.
+    </span></li>
+    <li><span>
+      That transform satisfies a generalized Parseval relation, so ordinary MSE-optimal
+      vector quantizers apply directly in the transform domain.
+    </span></li>
+    <li><span>
+      Equal-volume grouping makes fixed-width codebooks attain the variable-rate
+      optimum, so VQ survives the paged layout.
+    </span></li>
   </ol>
   <figure class="figure-wide">
     <div class="scroller">
@@ -640,38 +643,6 @@
       <span class="zoom-hint">&nbsp;&middot;&nbsp; click to enlarge</span>
     </figcaption>
   </figure>
-
-  <h3>Non-orthogonal transforms</h3>
-  <p>
-    Minimizing the query-weighted distortion gives a transform that first whitens by the
-    query second-moment matrix and then decorrelates. Prior methods constrain the
-    transform to be a rotation; we show that is strictly suboptimal whenever the
-    query statistics are anisotropic.
-  </p>
-
-  <h3>A generalized Parseval relation</h3>
-  <p>
-    That transform satisfies a generalized Parseval relation: the attention-aware
-    distortion becomes ordinary MSE in the transform domain. As a result, we can use any
-    off-the-shelf MSE-optimal vector quantizer.
-  </p>
-
-  <h3>Why VQ</h3>
-  <p>
-    Every token must occupy the same number of bits, so the quantizer has to minimize
-    distortion at a fixed rate. Vector quantization does this by quantizing small groups
-    of coefficients jointly. It also keeps the read path cheap, since reconstruction is a
-    codebook lookup plus one multiply to restore the per-token scale, which fuses into
-    the attention kernel.
-  </p>
-
-  <h3>Equal-volume grouping recovers the coding gain</h3>
-  <p>
-    Optimal bit allocation wants codebooks of different sizes, which fixed-width cache
-    layouts forbid. We show that partitioning the coefficients into groups of equal
-    variance-volume makes equal-size codebooks attain the variable-rate optimum, so the
-    coding gain survives the layout constraint.
-  </p>
 
 </section>
 
