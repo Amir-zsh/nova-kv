@@ -510,6 +510,21 @@
   .data-table tr.ours td:first-child { color: var(--accent); }
   .table-note { font-size: 0.85rem; color: var(--ink-3); margin-top: -1rem; }
   .eqc { font-size: 0.9rem; color: var(--ink-3); margin: -0.1rem 0 2.4rem; }
+
+  /* title + logo lockup */
+  .title-row { display: flex; align-items: center; justify-content: center;
+               gap: 1.6rem; max-width: 960px; margin: 0 auto 2rem; }
+  .title-row h1 { margin: 0; text-align: left; max-width: none; }
+  .brand-logo { width: clamp(58px, 8vw, 96px); height: auto; flex-shrink: 0; }
+  @media (max-width: 700px) {
+    .title-row { flex-direction: column; gap: 1rem; }
+    .title-row h1 { text-align: center; }
+  }
+
+  /* wide figures scroll rather than shrink to illegibility */
+  .figure-wide img { width: 100%; max-width: none; }
+  .figure-wide .scroller { overflow-x: auto; }
+  .figure-wide .scroller > img { min-width: 720px; }
 </style>
 </head>
 <body>
@@ -518,16 +533,19 @@
   <div class="fade-up">
     <span class="venue-tag">Preprint &middot; 2026</span>
   </div>
-  <h1 class="fade-up">
-    Spend Bits Where Queries Look: <span class="title-accent">KV Cache Vector
-    Quantization</span> with Attention-Preserving Transforms
-  </h1>
+  <div class="title-row fade-up">
+    <img class="brand-logo" src="logo.png" alt="NOVA-KV logo" />
+    <h1>
+      Spend Bits Where Queries Look: <span class="title-accent">KV Cache Vector
+      Quantization</span> with Attention-Preserving Transforms
+    </h1>
+  </div>
   <p class="authors fade-up">
     <a href="https://sf219.github.io" target="_blank">Samuel Fern&aacute;ndez-Mendui&ntilde;a</a><sup>*</sup>&ensp;&middot;&ensp;
-    <a href="https://github.com/Amir-zsh" target="_blank">Amir Ziashahabi</a><sup>*</sup>&ensp;&middot;&ensp;
+    <a href="https://amir-zsh.github.io/" target="_blank">Amir Ziashahabi</a><sup>*</sup>&ensp;&middot;&ensp;
     <a href="https://epavez.github.io" target="_blank">Eduardo Pavez</a>&ensp;&middot;&ensp;
     <a href="https://sites.google.com/usc.edu/stac-lab/home" target="_blank">Antonio Ortega</a>&ensp;&middot;&ensp;
-    Salman Avestimehr
+    <a href="https://www.avestimehr.com/" target="_blank">Salman Avestimehr</a>
   </p>
   <p class="affiliation fade-up">University of Southern California</p>
   <p class="eqc fade-up"><sup>*</sup>Equal contribution</p>
@@ -591,14 +609,22 @@
 <section id="problem">
   <h2>Why the cache, and why not MSE</h2>
   <p>
-    Every decoding step reads the whole KV cache from memory. Because loading it costs
-    more than the attention arithmetic performed on it, decoding is bound by memory
-    bandwidth: at batch 64 on 8&times;H100, reading the cache is <strong>76%</strong> of
-    the step &mdash; more than six times the cost of loading every weight in the model.
+    A transformer caches one key and one value vector per token, per layer, per head, so
+    that it never recomputes them. That cache grows with context length <em>and</em> with
+    batch size, and every decoding step must read all of it back from memory. Modern
+    kernels compute attention far faster than the cache can be loaded, so once the
+    context is long the step is not doing arithmetic &mdash; it is waiting on memory.
+    The cache, not the model, is the bottleneck.
   </p>
   <figure class="figure-small">
-    <img src="decode.png" alt="Measured per-step decode time by phase for Qwen3-8B, showing KV cache loading dominating at large batch size.">
-    <figcaption>Measured per-step decode time, Qwen3-8B, 8&times;H100, 16K context.</figcaption>
+    <img src="decode.png" alt="Measured per-step decode time by phase for Qwen3-8B at batch sizes 1, 4, 16 and 64, showing KV cache loading growing to dominate the step.">
+    <figcaption>
+      <strong>Measured per-step decode time, Qwen3-8B, 8&times;H100, 16K context.</strong>
+      Parameter loading is flat in batch size; KV loading is not. At batch 64, reading
+      the cache is <strong>76%</strong> of the step &mdash; more than six times the cost
+      of loading every weight in the model. Shrinking the cache therefore buys decoding
+      speed and serving capacity at the same time.
+    </figcaption>
   </figure>
   <p>
     The subtler point is <em>what</em> to preserve. Standard quantizers minimize the
@@ -615,12 +641,22 @@
     We treat cache compression as transform coding whose distortion is the error in the
     attention products, and solve for the transform in closed form.
   </p>
-  <figure>
-    <img src="overview.png" alt="NOVA-KV pipeline: offline calibration produces the transforms, grouping and codebooks; online, keys are transformed and encoded once on the write path while the read path is a table lookup.">
+  <figure class="figure-wide">
+    <div class="scroller">
+      <img src="overview.png" alt="NOVA-KV pipeline. (a) Offline calibration produces the transforms, grouping and codebooks. (b) Online, keys and values are transformed and encoded once on the write path, while the read path is a table lookup. (c) Scatterplots of keys and queries, and of quantization error under the KLT versus our transform.">
+    </div>
     <figcaption>
-      Calibration yields the transforms, the volume-equalized grouping and the
-      codebooks. Online, each key is transformed and encoded once on the write path;
-      the read path &mdash; paid at every decoding step &mdash; is a table lookup.
+      <strong>(a)</strong> Calibration yields the transforms, the volume-equalized
+      grouping&nbsp;&pi; and the codebooks &mdash; done once, offline.
+      <strong>(b)</strong> Online, each key and value is transformed and encoded once on
+      the write path; the read path, paid at <em>every</em> decoding step, is a table
+      lookup plus one multiply. The inverse key transform folds into the query, so it
+      never touches the cache.
+      <strong>(c)</strong> Why the transform is not a rotation. Top: keys and queries
+      occupy different directions, and the query covariance (dashed) is anisotropic.
+      Bottom: at equal rate, the KLT spreads its error isotropically, while ours steers
+      the error away from the high-energy query directions &mdash; same bit budget,
+      smaller damage to the attention logits.
     </figcaption>
   </figure>
 
@@ -696,6 +732,28 @@
     </tbody>
   </table>
   <p class="table-note">RULER NIAH mean accuracy (%), Qwen3-8B.</p>
+
+  <h3>Throughput</h3>
+  <p>
+    Accuracy is only half the claim: a smaller cache has to actually decode faster. We
+    measure decode throughput in SGLang, excluding time to first token.
+  </p>
+  <figure class="figure-wide">
+    <div class="scroller">
+      <img src="throughput.png" alt="Decode throughput bar charts. Top row: throughput against input length at 30K, 60K and 90K for GPT-OSS-20B, Qwen3-8B and Qwen3-4B-Thinking. Bottom row: throughput against batch size.">
+    </div>
+    <figcaption>
+      <strong>Decode throughput, prefill excluded.</strong> Top: against input length at
+      batch&nbsp;1. Bottom: against batch size. NOVA-KV reaches
+      <strong>1.6&ndash;3.1&times;</strong> BF16 on Qwen3-8B and
+      <strong>1.7&ndash;3.4&times;</strong> on Qwen3-4B, with the larger factors at the
+      longer inputs. The factor is smaller on GPT-OSS-20B (1.1&ndash;1.5&times;), whose
+      sliding-window layers leave less cache to compress. Against OSCAR at the same rate
+      the two arms are within a few percent, so the accuracy gains below are not bought
+      with speed. At 90K the BF16 cache admits at most batch&nbsp;4 on either Qwen model,
+      while both 2-bit arms still serve batch&nbsp;16.
+    </figcaption>
+  </figure>
 
   <h3>Robustness across architectures</h3>
   <p>
