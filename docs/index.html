@@ -518,14 +518,13 @@
 </section>
 
 <section id="mse">
-  <h2>MSE is the wrong thing to preserve</h2>
+  <h2>What's wrong with MSE?</h2>
   <p>
-    Shrinking the cache is only half the problem. The other half is choosing <em>what</em>
-    to preserve while shrinking it. Standard quantizers minimize the error in the stored
-    keys and values, but attention never reads those directly: it reads them through the
-    key&ndash;query inner products. Two reconstructions with identical MSE can distort the
-    attention logits by very different amounts, depending on whether their error happens
-    to land in directions the queries actually look along.
+    Standard quantizers minimize the error in the stored keys and values, but attention
+    never reads those directly: it reads them through the key&ndash;query inner products.
+    Two reconstructions with identical MSE can distort the attention logits by very
+    different amounts, depending on whether their error happens to land in directions
+    the queries actually look along.
   </p>
   <div class="figure-row">
     <figure>
@@ -546,18 +545,14 @@
     </figure>
   </div>
   <p>
-    This is what the paper makes precise. Posing the problem as transform coding with the
-    attention-product error as the distortion gives a different optimal transform, and
-    that transform is not a rotation.
+    We pose the problem as transform coding with the attention-product error as the
+    distortion. This gives a different optimal transform, and that transform is not a
+    rotation.
   </p>
 </section>
 
 <section id="method">
   <h2>Transform coding for the attention products</h2>
-  <p>
-    We treat cache compression as transform coding whose distortion is the error in the
-    attention products, and solve for the transform in closed form.
-  </p>
   <figure class="figure-wide">
     <div class="scroller">
       <a href="panel_pipeline.png" target="_blank" title="Open full resolution">
@@ -575,9 +570,7 @@
   </figure>
 
   <p>
-    Three results make this work. The transforms, grouping and codebooks are fit once,
-    offline, from calibration statistics: 198 prompts, prefill only, with no label, gold
-    answer or task metric entering the fit.
+    Three results make this work.
   </p>
 
   <h3>The optimal transform is not orthogonal</h3>
