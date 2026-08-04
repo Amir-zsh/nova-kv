@@ -549,8 +549,8 @@
     <li><span>
       <strong>Accuracy.</strong> What has to be preserved is downstream task
       performance. A quantizer cannot optimize that directly, so it needs a proxy.
-      Since the cache is only ever read through key&ndash;query inner products, we use
-      the error in those products as the proxy.
+      Since the cache is only ever read through the attention computation, we use the
+      error in the attention products as the proxy.
     </span></li>
     <li><span>
       <strong>Read cost.</strong> The cache is read at every decoding step, so any
@@ -571,11 +571,14 @@
 <section id="mse">
   <h2>What's wrong with MSE?</h2>
   <p>
-    Standard quantizers minimize the error in the stored keys and values, but attention
-    never reads those directly: it reads them through the key&ndash;query inner products.
-    Two reconstructions with identical MSE can distort the attention logits by very
-    different amounts, depending on whether their error happens to land in directions
-    the queries actually look along.
+    Standard quantizers minimize the error in the stored keys and values. For the values
+    that is the right thing to do: they enter the output through the attention-weighted
+    sum, and the transform that minimizes the error in that sum turns out to be
+    orthogonal, so ordinary MSE in the transform domain is the correct objective.
+    The keys are the problem. Attention never reads a key directly: it reads it through
+    the key&ndash;query inner product. Two reconstructions with identical MSE can distort
+    the attention logits by very different amounts, depending on whether their error
+    happens to land in directions the queries actually look along.
   </p>
   <div class="figure-row">
     <figure>
