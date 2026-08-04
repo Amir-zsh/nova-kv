@@ -521,16 +521,18 @@
     .title-row h1 { text-align: center; }
   }
 
-  /* Wide figures break out of the text column. Fig 2 is ~2.7:1 and dense with
-     small labels; inside the 1040px column it renders ~350px tall and nothing
-     in it is legible. Give it the viewport. */
-  .figure-bleed { width: 100vw; margin-left: calc(50% - 50vw); margin-top: 0; }
-  .figure-bleed .scroller { overflow-x: auto; padding: 0 clamp(0.5rem, 2vw, 2rem); }
-  .figure-bleed img { width: 100%; max-width: 1760px; min-width: 900px;
-                      margin: 0 auto; display: block; }
-  .figure-bleed figcaption { max-width: var(--max-w); margin: 0.9rem auto 0;
-                             padding: 0 var(--side); }
+  /* The hero figure lines up with the text column. Panel (b) alone is ~1.6:1,
+     so at the column width it still stands ~640px tall and reads fine. */
+  .figure-bleed { width: min(100%, var(--max-w)); margin: 0 auto;
+                  padding: 0 var(--side); }
+  .figure-bleed .scroller { overflow-x: auto; }
+  .figure-bleed img { width: 100%; max-width: none; margin: 0; display: block; }
+  .figure-bleed figcaption { margin-top: 0.9rem; padding: 0; }
   .figure-bleed a { display: block; }
+  /* on phones let it scroll rather than shrink to unreadable */
+  @media (max-width: 760px) {
+    .figure-bleed .scroller > a > img { min-width: 640px; }
+  }
 
   .figure-wide img { width: 100%; max-width: none; }
   .figure-wide .scroller { overflow-x: auto; }
