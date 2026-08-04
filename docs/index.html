@@ -457,7 +457,7 @@
 <nav>
   <ul>
     <li><a href="#abstract">Abstract</a></li>
-    <li><a href="#problem">Reading</a></li>
+    <li><a href="#problem">KV cache</a></li>
     <li><a href="#mse">MSE</a></li>
     <li><a href="#method">Method</a></li>
     <li><a href="#results">Results</a></li>
@@ -497,14 +497,13 @@
 </section>
 
 <section id="problem">
-  <h2>Every decoding step reads the whole cache</h2>
+  <h2>KV cache quantization</h2>
   <p>
-    A transformer caches one key and one value vector per token, per layer, per head, so
-    that it never recomputes them. That cache grows with context length <em>and</em> with
-    batch size, and every decoding step must read all of it back from memory. Modern
-    kernels compute attention far faster than the cache can be loaded, so once the
-    context is long the step is not doing arithmetic. It is waiting on memory.
-    The cache, not the model, is the bottleneck.
+    A transformer caches one key and one value vector per token, per layer, per head.
+    This cache grows with context length and with batch size, and every decoding step
+    must read all of it back from memory. Modern kernels compute attention faster than
+    the cache can be loaded, so once the context is long, the cache becomes the
+    bottleneck.
   </p>
   <figure class="figure-small">
     <img src="decode.png" alt="Measured per-step decode time by phase for Qwen3-8B at batch sizes 1, 4, 16 and 64, showing KV cache loading growing to dominate the step.">
