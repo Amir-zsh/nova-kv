@@ -629,15 +629,11 @@
 
   <h3>Why VQ</h3>
   <p>
-    Serving fixes the layout: every token must occupy the same number of bits, and rate
-    cannot be reallocated across entries, so the quantizer has to minimize distortion at
-    a fixed rate. Vector quantization does this by quantizing small groups of
-    coefficients jointly. It also keeps the read path cheap, since reconstruction is a
+    Every token must occupy the same number of bits, so the quantizer has to minimize
+    distortion at a fixed rate. Vector quantization does this by quantizing small groups
+    of coefficients jointly. It also keeps the read path cheap, since reconstruction is a
     codebook lookup plus one multiply to restore the per-token scale, which fuses into
-    the attention kernel. And the choice matters at this rate: scalar quantizers are
-    suboptimal at low rates, while quantizing in <em>g</em> dimensions recovers part of
-    that loss. With VQ fixed, the only remaining degree of freedom is the partition, that
-    is, how the coefficients are grouped.
+    the attention kernel.
   </p>
 
   <h3>Equal-volume grouping recovers the coding gain</h3>
