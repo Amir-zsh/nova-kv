@@ -22,8 +22,17 @@
       --ink-2:        #3d3830;
       --ink-3:        #7a7060;
       --rule:         #ddd8ce;
-      --accent:       #2d5a8e;
-      --accent-light: #e8f0f9;
+      /* Paper palette (see the \definecolor block in the LaTeX preamble).
+         deepspace is the figure line colour and the arXiv link colour; steel
+         is the lighter blue in the plots; brickred is the "ours" accent. The
+         tints below are the LaTeX mixes: steel!18!white, steel!40!white and
+         brickred!12!white. */
+      --accent:        #003049;  /* deepspace */
+      --accent-steel:  #669BBC;  /* steel     */
+      --accent-light:  #e3edf3;  /* steel!18  */
+      --accent-border: #c2d7e4;  /* steel!40  */
+      --brick:         #C1121F;  /* brickred  */
+      --brick-light:   #f8e3e4;  /* brickred!12 */
 
       --serif:  'EB Garamond', Georgia, serif;
       --display:'Fraunces', Georgia, serif;
@@ -60,7 +69,7 @@
       text-transform: uppercase;
       color: var(--accent);
       background: var(--accent-light);
-      border: 1px solid #c5d9f0;
+      border: 1px solid var(--accent-border);
       border-radius: 2px;
       padding: 0.25em 0.75em;
       margin-bottom: 2rem;
@@ -250,100 +259,6 @@
       font-size: 0.95rem;
     }
 
-    /* ── Step list (divide & conquer) ────────────────── */
-    .step-list {
-      list-style: none;
-      counter-reset: step;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin: 1.5rem 0;
-    }
-    .step-list li {
-      counter-increment: step;
-      display: flex;
-      gap: 1.25rem;
-      align-items: flex-start;
-    }
-    .step-list li::before {
-      content: counter(step);
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      font-weight: 500;
-      color: var(--paper);
-      background: var(--accent);
-      border-radius: 50%;
-      min-width: 1.6em;
-      height: 1.6em;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      margin-top: 0.2em;
-    }
-
-
-    /* ── Complexity callout ───────────────────────────── */
-    .complexity-callout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1px;
-      background: var(--rule);
-      border: 1px solid var(--rule);
-      border-radius: 2px;
-      overflow: hidden;
-      margin: 2rem 0;
-    }
-    .complexity-callout .stat {
-      background: var(--paper);
-      padding: 1.5rem 1.75rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-    .complexity-callout .stat.highlight { background: var(--accent-light); }
-    .complexity-callout .stat-label {
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--ink-3);
-    }
-    .complexity-callout .stat-value {
-      font-family: var(--serif);
-      font-size: 1.6rem;
-      line-height: 1.1;
-      color: var(--ink);
-    }
-    .complexity-callout .stat.highlight .stat-value { color: var(--accent); }
-
-    /* ── Method grid ─────────────────────────────────── */
-    .method-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr 1fr;
-      gap: 0;
-      border: 1px solid var(--rule);
-      border-radius: 2px;
-      overflow: hidden;
-      margin: 2rem 0;
-      font-size: 0.83rem;
-    }
-    .method-grid .cell {
-      padding: 0.75em 1em;
-      border-right: 1px solid var(--rule);
-      border-bottom: 1px solid var(--rule);
-    }
-    .method-grid .cell:nth-child(4n) { border-right: none; }
-    .method-grid .cell.header {
-      background: var(--cream);
-      font-family: var(--mono);
-      font-size: 0.7rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--ink-3);
-    }
-    .method-grid .cell.ours-cell { background: var(--accent-light); font-weight: 500; }
-
     /* ── Results stat grid (MIRA style) ──────────────── */
     .results-stats {
       display: grid;
@@ -375,38 +290,6 @@
       text-transform: uppercase;
       color: var(--ink-3);
       line-height: 1.4;
-    }
-
-    /* ── Result headlines ────────────────────────────── */
-    .result-headlines {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      margin: 2rem 0;
-      border: 1px solid var(--rule);
-      border-radius: 2px;
-      overflow: hidden;
-    }
-    .result-headlines li {
-      display: flex;
-      align-items: baseline;
-      gap: 1rem;
-      padding: 1rem 1.25rem;
-      border-bottom: 1px solid var(--rule);
-      font-size: 0.97rem;
-    }
-    .result-headlines li:last-child { border-bottom: none; }
-    .result-headlines li:nth-child(odd) { background: var(--cream); }
-    .result-headlines .rh-tag {
-      font-family: var(--mono);
-      font-size: 0.65rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent);
-      white-space: nowrap;
-      flex-shrink: 0;
-      padding-top: 0.15em;
     }
 
     /* ── Citation ────────────────────────────────────── */
@@ -472,14 +355,10 @@
     @media (max-width: 640px) {
       nav ul { overflow-x: auto; }
       nav a { padding: 0.75em 0.6em; font-size: 0.65rem; }
-      .method-grid { grid-template-columns: 1fr 1fr; }
-      .method-grid .cell:nth-child(4n) { border-right: 1px solid var(--rule); }
-      .method-grid .cell:nth-child(2n) { border-right: none; }
       .results-stats { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 900px) {
       .figure-row { grid-template-columns: 1fr; }
-      .complexity-callout { grid-template-columns: 1fr; }
     }
 
     /* ── Fade-in ─────────────────────────────────────── */
@@ -496,7 +375,7 @@
   </style>
 
 <style>
-  /* results table, in the same visual language as .method-grid */
+  /* results table */
   .data-table { width: 100%; border-collapse: collapse; margin: 2rem 0;
                 font-family: var(--serif); font-size: 0.95rem; }
   .data-table th { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em;
@@ -506,8 +385,9 @@
   .data-table th:first-child, .data-table td:first-child { text-align: left; }
   .data-table td { text-align: right; padding: 0.6em 0.8em;
                    border-bottom: 1px solid var(--rule); }
-  .data-table tr.ours td { background: var(--accent-light); font-weight: 500; }
-  .data-table tr.ours td:first-child { color: var(--accent); }
+  /* the paper shades its own rows brickred!12, not blue: keep that */
+  .data-table tr.ours td { background: var(--brick-light); font-weight: 500; }
+  .data-table tr.ours td:first-child { color: var(--brick); }
   .table-note { font-size: 0.85rem; color: var(--ink-3); margin-top: -1rem; }
   .eqc { font-size: 0.9rem; color: var(--ink-3); margin: -0.1rem 0 2.4rem; }
 
