@@ -588,7 +588,8 @@
 <nav>
   <ul>
     <li><a href="#abstract">Abstract</a></li>
-    <li><a href="#problem">Problem</a></li>
+    <li><a href="#problem">Reading</a></li>
+    <li><a href="#mse">MSE</a></li>
     <li><a href="#method">Method</a></li>
     <li><a href="#results">Results</a></li>
     <li><a href="#citation">Citation</a></li>
@@ -599,22 +600,16 @@
   <p class="eyebrow">The method at a glance</p>
   <figure class="figure-bleed">
     <div class="scroller">
-      <a href="overview.png" target="_blank" title="Open full resolution">
-        <img src="overview.png" alt="NOVA-KV pipeline. (a) Offline calibration produces the transforms, the volume-equalized grouping and the codebooks. (b) Online, keys and values are transformed and encoded once on the write path, while the read path is a table lookup. (c) Scatterplots of keys and queries with the query covariance, and of quantization error under the KLT versus our transform.">
+      <a href="panel_pipeline.png" target="_blank" title="Open full resolution">
+        <img src="panel_pipeline.png" alt="NOVA-KV online inference. Keys and values are transformed and encoded once on the write path into a fixed-width paged cache; on the read path, each is a codebook lookup followed by an inverse transform, then attention.">
       </a>
     </div>
     <figcaption>
-      <strong>(a)</strong> Calibration yields the transforms, the volume-equalized
-      grouping&nbsp;&pi; and the codebooks. Done once, offline.
-      <strong>(b)</strong> Online, each key and value is transformed and encoded once on
-      the write path. The read path, paid at <em>every</em> decoding step, is a table
-      lookup plus one multiply, and the inverse key transform folds into the query so it
-      never touches the cache.
-      <strong>(c)</strong> Why the transform is not a rotation. Top: keys and queries
-      occupy different directions, and the query covariance (dashed) is anisotropic.
-      Bottom: at equal rate, the KLT spreads its error isotropically, while ours steers
-      the error away from the high-energy query directions. Same bit budget, smaller
-      damage to the attention logits.
+      Each key and value is transformed and encoded <strong>once</strong>, on the write
+      path. The read path, paid at <em>every</em> decoding step, is a codebook lookup
+      plus one multiply. The inverse key transform folds into the query, so the cache is
+      never multiplied by anything at read time, and what sits in memory is a
+      fixed-width page of 8-bit indices.
       <span class="zoom-hint">&nbsp;&middot;&nbsp; click to enlarge</span>
     </figcaption>
   </figure>
@@ -652,7 +647,7 @@
 </section>
 
 <section id="problem">
-  <h2>Why the cache, and why not MSE</h2>
+  <h2>Every decoding step reads the whole cache</h2>
   <p>
     A transformer caches one key and one value vector per token, per layer, per head, so
     that it never recomputes them. That cache grows with context length <em>and</em> with
@@ -671,12 +666,40 @@
       speed and serving capacity at the same time.
     </figcaption>
   </figure>
+</section>
+
+<section id="mse">
+  <h2>MSE is the wrong thing to preserve</h2>
   <p>
-    The subtler point is <em>what</em> to preserve. Standard quantizers minimize the
-    error in the stored keys and values, but attention never reads them directly: it
-    reads them through the key&ndash;query inner products. Two reconstructions with the
-    same MSE can distort the attention logits very differently, so MSE is the wrong
-    fidelity criterion.
+    Shrinking the cache is only half the problem. The other half is choosing <em>what</em>
+    to preserve while shrinking it. Standard quantizers minimize the error in the stored
+    keys and values, but attention never reads those directly: it reads them through the
+    key&ndash;query inner products. Two reconstructions with identical MSE can distort the
+    attention logits by very different amounts, depending on whether their error happens
+    to land in directions the queries actually look along.
+  </p>
+  <div class="figure-row">
+    <figure>
+      <img src="scatter_dist.png" alt="Scatterplot of keys and queries in two dimensions, with the query covariance drawn as a dashed ellipse.">
+      <figcaption>
+        Keys and queries occupy different directions, and the query covariance (dashed)
+        is far from isotropic. Some directions are read hard; others are barely read at
+        all.
+      </figcaption>
+    </figure>
+    <figure>
+      <img src="scatter_err.png" alt="Scatterplot of quantization error under the KLT versus under our transform, against the same query covariance ellipse.">
+      <figcaption>
+        Quantization error at <em>equal rate</em>. The KLT, which is MSE-optimal, spreads
+        its error isotropically. Ours steers the error away from the high-energy query
+        directions: same bit budget, less damage to the logits.
+      </figcaption>
+    </figure>
+  </div>
+  <p>
+    This is what the paper makes precise. Posing the problem as transform coding with the
+    attention-product error as the distortion gives a different optimal transform, and
+    that transform is not a rotation.
   </p>
 </section>
 
@@ -687,8 +710,10 @@
     attention products, and solve for the transform in closed form.
   </p>
   <p>
-    The three pieces below are panels <strong>(a)</strong>, <strong>(b)</strong> and
-    <strong>(c)</strong> of the figure at the top of the page.
+    Three results make the pipeline at the top of the page work. The transforms,
+    grouping and codebooks it uses are fit once, offline, from calibration statistics:
+    198 prompts, prefill only, with no label, gold answer or task metric entering the
+    fit.
   </p>
 
   <h3>The optimal transform is not orthogonal</h3>
