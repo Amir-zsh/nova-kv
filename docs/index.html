@@ -521,30 +521,17 @@
     .title-row h1 { text-align: center; }
   }
 
-  /* The hero figure lines up with the text column. Panel (b) alone is ~1.6:1,
-     so at the column width it still stands ~640px tall and reads fine. */
-  .figure-bleed { width: min(100%, var(--max-w)); margin: 0 auto;
-                  padding: 0 var(--side); }
-  .figure-bleed .scroller { overflow-x: auto; }
-  .figure-bleed img { width: 100%; max-width: none; margin: 0; display: block; }
-  .figure-bleed figcaption { margin-top: 0.9rem; padding: 0; }
-  .figure-bleed a { display: block; }
-  /* on phones let it scroll rather than shrink to unreadable */
+  /* Figures that should fill the text column rather than the 860px default.
+     Both the pipeline panel (~1.6:1) and the throughput grid read fine there. */
+  .figure-wide img { width: 100%; max-width: none; display: block; }
+  .figure-wide a { display: block; }
+  .figure-wide .scroller { overflow-x: auto; }
+  /* on phones let them scroll rather than shrink to unreadable */
   @media (max-width: 760px) {
-    .figure-bleed .scroller > a > img { min-width: 640px; }
+    .figure-wide .scroller > img,
+    .figure-wide .scroller > a > img { min-width: 640px; }
   }
 
-  .figure-wide img { width: 100%; max-width: none; }
-  .figure-wide .scroller { overflow-x: auto; }
-  .figure-wide .scroller > img { min-width: 760px; }
-
-  /* hero band holding the main figure */
-  .hero-figure { padding: 3.25rem 0 3.5rem; border-bottom: 1px solid var(--rule);
-                 background: var(--cream); }
-  .hero-figure .eyebrow { font-family: var(--mono); font-size: 0.7rem;
-                          letter-spacing: 0.14em; text-transform: uppercase;
-                          color: var(--accent); text-align: center;
-                          margin-bottom: 1.5rem; }
   .zoom-hint { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em;
                text-transform: uppercase; color: var(--ink-3); }
 </style>
@@ -597,25 +584,6 @@
     <li><a href="#citation">Citation</a></li>
   </ul>
 </nav>
-
-<section class="hero-figure">
-  <p class="eyebrow">The method at a glance</p>
-  <figure class="figure-bleed">
-    <div class="scroller">
-      <a href="panel_pipeline.png" target="_blank" title="Open full resolution">
-        <img src="panel_pipeline.png" alt="NOVA-KV online inference. Keys and values are transformed and encoded once on the write path into a fixed-width paged cache; on the read path, each is a codebook lookup followed by an inverse transform, then attention.">
-      </a>
-    </div>
-    <figcaption>
-      Each key and value is transformed and encoded <strong>once</strong>, on the write
-      path. The read path, paid at <em>every</em> decoding step, is a codebook lookup
-      plus one multiply. The inverse key transform folds into the query, so the cache is
-      never multiplied by anything at read time, and what sits in memory is a
-      fixed-width page of 8-bit indices.
-      <span class="zoom-hint">&nbsp;&middot;&nbsp; click to enlarge</span>
-    </figcaption>
-  </figure>
-</section>
 
 <main>
 
@@ -711,11 +679,26 @@
     We treat cache compression as transform coding whose distortion is the error in the
     attention products, and solve for the transform in closed form.
   </p>
+  <figure class="figure-wide">
+    <div class="scroller">
+      <a href="panel_pipeline.png" target="_blank" title="Open full resolution">
+        <img src="panel_pipeline.png" alt="NOVA-KV online inference. Keys and values are transformed and encoded once on the write path into a fixed-width paged cache; on the read path, each is a codebook lookup followed by an inverse transform, then attention.">
+      </a>
+    </div>
+    <figcaption>
+      Each key and value is transformed and encoded <strong>once</strong>, on the write
+      path. The read path, paid at <em>every</em> decoding step, is a codebook lookup
+      plus one multiply. The inverse key transform folds into the query, so the cache is
+      never multiplied by anything at read time, and what sits in memory is a
+      fixed-width page of 8-bit indices.
+      <span class="zoom-hint">&nbsp;&middot;&nbsp; click to enlarge</span>
+    </figcaption>
+  </figure>
+
   <p>
-    Three results make the pipeline at the top of the page work. The transforms,
-    grouping and codebooks it uses are fit once, offline, from calibration statistics:
-    198 prompts, prefill only, with no label, gold answer or task metric entering the
-    fit.
+    Three results make this work. The transforms, grouping and codebooks are fit once,
+    offline, from calibration statistics: 198 prompts, prefill only, with no label, gold
+    answer or task metric entering the fit.
   </p>
 
   <h3>The optimal transform is not orthogonal</h3>
