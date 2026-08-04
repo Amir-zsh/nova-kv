@@ -521,10 +521,30 @@
     .title-row h1 { text-align: center; }
   }
 
-  /* wide figures scroll rather than shrink to illegibility */
+  /* Wide figures break out of the text column. Fig 2 is ~2.7:1 and dense with
+     small labels; inside the 1040px column it renders ~350px tall and nothing
+     in it is legible. Give it the viewport. */
+  .figure-bleed { width: 100vw; margin-left: calc(50% - 50vw); margin-top: 0; }
+  .figure-bleed .scroller { overflow-x: auto; padding: 0 clamp(0.5rem, 2vw, 2rem); }
+  .figure-bleed img { width: 100%; max-width: 1760px; min-width: 900px;
+                      margin: 0 auto; display: block; }
+  .figure-bleed figcaption { max-width: var(--max-w); margin: 0.9rem auto 0;
+                             padding: 0 var(--side); }
+  .figure-bleed a { display: block; }
+
   .figure-wide img { width: 100%; max-width: none; }
   .figure-wide .scroller { overflow-x: auto; }
-  .figure-wide .scroller > img { min-width: 720px; }
+  .figure-wide .scroller > img { min-width: 760px; }
+
+  /* hero band holding the main figure */
+  .hero-figure { padding: 3.25rem 0 3.5rem; border-bottom: 1px solid var(--rule);
+                 background: var(--cream); }
+  .hero-figure .eyebrow { font-family: var(--mono); font-size: 0.7rem;
+                          letter-spacing: 0.14em; text-transform: uppercase;
+                          color: var(--accent); text-align: center;
+                          margin-bottom: 1.5rem; }
+  .zoom-hint { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em;
+               text-transform: uppercase; color: var(--ink-3); }
 </style>
 </head>
 <body>
@@ -575,6 +595,31 @@
   </ul>
 </nav>
 
+<section class="hero-figure">
+  <p class="eyebrow">The method at a glance</p>
+  <figure class="figure-bleed">
+    <div class="scroller">
+      <a href="overview.png" target="_blank" title="Open full resolution">
+        <img src="overview.png" alt="NOVA-KV pipeline. (a) Offline calibration produces the transforms, the volume-equalized grouping and the codebooks. (b) Online, keys and values are transformed and encoded once on the write path, while the read path is a table lookup. (c) Scatterplots of keys and queries with the query covariance, and of quantization error under the KLT versus our transform.">
+      </a>
+    </div>
+    <figcaption>
+      <strong>(a)</strong> Calibration yields the transforms, the volume-equalized
+      grouping&nbsp;&pi; and the codebooks. Done once, offline.
+      <strong>(b)</strong> Online, each key and value is transformed and encoded once on
+      the write path. The read path, paid at <em>every</em> decoding step, is a table
+      lookup plus one multiply, and the inverse key transform folds into the query so it
+      never touches the cache.
+      <strong>(c)</strong> Why the transform is not a rotation. Top: keys and queries
+      occupy different directions, and the query covariance (dashed) is anisotropic.
+      Bottom: at equal rate, the KLT spreads its error isotropically, while ours steers
+      the error away from the high-energy query directions. Same bit budget, smaller
+      damage to the attention logits.
+      <span class="zoom-hint">&nbsp;&middot;&nbsp; click to enlarge</span>
+    </figcaption>
+  </figure>
+</section>
+
 <main>
 
 <section id="abstract">
@@ -595,7 +640,7 @@
         transforms for keys and values from calibration statistics. The optimal key
         transform is <em>not</em> orthogonal, and it satisfies a generalized Parseval
         relation that turns the attention-aware distortion into ordinary mean-squared
-        error in the transform domain &mdash; so MSE-optimal vector quantizers apply
+        error in the transform domain, so MSE-optimal vector quantizers apply
         directly. To meet the fixed-width layout requirement, we show that grouping
         coefficients into equal-volume partitions lets equal-size codebooks attain the
         variable-rate optimum. At two bits per element, NOVA-KV recovers most of the
@@ -613,7 +658,7 @@
     that it never recomputes them. That cache grows with context length <em>and</em> with
     batch size, and every decoding step must read all of it back from memory. Modern
     kernels compute attention far faster than the cache can be loaded, so once the
-    context is long the step is not doing arithmetic &mdash; it is waiting on memory.
+    context is long the step is not doing arithmetic. It is waiting on memory.
     The cache, not the model, is the bottleneck.
   </p>
   <figure class="figure-small">
@@ -621,7 +666,7 @@
     <figcaption>
       <strong>Measured per-step decode time, Qwen3-8B, 8&times;H100, 16K context.</strong>
       Parameter loading is flat in batch size; KV loading is not. At batch 64, reading
-      the cache is <strong>76%</strong> of the step &mdash; more than six times the cost
+      the cache is <strong>76%</strong> of the step, more than six times the cost
       of loading every weight in the model. Shrinking the cache therefore buys decoding
       speed and serving capacity at the same time.
     </figcaption>
@@ -641,24 +686,10 @@
     We treat cache compression as transform coding whose distortion is the error in the
     attention products, and solve for the transform in closed form.
   </p>
-  <figure class="figure-wide">
-    <div class="scroller">
-      <img src="overview.png" alt="NOVA-KV pipeline. (a) Offline calibration produces the transforms, grouping and codebooks. (b) Online, keys and values are transformed and encoded once on the write path, while the read path is a table lookup. (c) Scatterplots of keys and queries, and of quantization error under the KLT versus our transform.">
-    </div>
-    <figcaption>
-      <strong>(a)</strong> Calibration yields the transforms, the volume-equalized
-      grouping&nbsp;&pi; and the codebooks &mdash; done once, offline.
-      <strong>(b)</strong> Online, each key and value is transformed and encoded once on
-      the write path; the read path, paid at <em>every</em> decoding step, is a table
-      lookup plus one multiply. The inverse key transform folds into the query, so it
-      never touches the cache.
-      <strong>(c)</strong> Why the transform is not a rotation. Top: keys and queries
-      occupy different directions, and the query covariance (dashed) is anisotropic.
-      Bottom: at equal rate, the KLT spreads its error isotropically, while ours steers
-      the error away from the high-energy query directions &mdash; same bit budget,
-      smaller damage to the attention logits.
-    </figcaption>
-  </figure>
+  <p>
+    The three pieces below are panels <strong>(a)</strong>, <strong>(b)</strong> and
+    <strong>(c)</strong> of the figure at the top of the page.
+  </p>
 
   <h3>The optimal transform is not orthogonal</h3>
   <p>
@@ -685,16 +716,6 @@
     coding gain survives the layout constraint.
   </p>
 
-  <div class="complexity-callout">
-    <div class="stat highlight">
-      <div class="stat-label">Read path</div>
-      <div class="stat-value">table lookup + one multiply</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Write path</div>
-      <div class="stat-value">once per token</div>
-    </div>
-  </div>
 </section>
 
 <section id="results">
@@ -760,7 +781,7 @@
     The gap widens on models where orthogonal transforms struggle. On GPT-OSS-20B,
     NOVA-KV preserves most of the BF16 accuracy on every generation benchmark
     (mean <strong>72.4</strong> against 76.5), while OSCAR collapses to a mean of
-    <strong>13.9</strong> &mdash; scoring 0.0 on both LiveCodeBench&nbsp;v6 and AIME25 &mdash;
+    <strong>13.9</strong>, scoring 0.0 on both LiveCodeBench&nbsp;v6 and AIME25,
     and TurboQuant falls to 37.4. Across all four models tested, NOVA-KV stays close to
     BF16 while the robustness of the orthogonal-transform baselines varies considerably.
   </p>
