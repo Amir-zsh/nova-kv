@@ -716,7 +716,8 @@
 <section id="citation">
   <h2>Citation</h2>
   <div class="citation-wrap">
-<div class="citation-block">@article{fernandezmenduina2026novakv,
+    <button class="copy-btn" type="button" data-copy="#bibtex">Copy</button>
+<div class="citation-block" id="bibtex">@article{fernandezmenduina2026novakv,
   title   = {Spend Bits Where Queries Look: KV Cache Vector Quantization
              with Attention-Preserving Transforms},
   author  = {Fern\'andez-Mendui\~na, Samuel and Ziashahabi, Amir and
@@ -733,6 +734,44 @@
   Samuel Fern&aacute;ndez-Mendui&ntilde;a &middot; Amir Ziashahabi &middot;
   University of Southern California
 </footer>
+
+
+<script>
+(function () {
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    // file:// and other non-secure contexts have no async clipboard API
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy') ? resolve() : reject(); }
+      catch (err) { reject(err); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var target = document.querySelector(btn.dataset.copy);
+      if (!target) { return; }
+      copyText(target.textContent).then(function () {
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+      }).catch(function () {
+        btn.textContent = 'Copy failed';
+        setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+      });
+    });
+  });
+})();
+</script>
 
 </body>
 </html>
