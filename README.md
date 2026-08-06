@@ -1,22 +1,10 @@
-# nova-kv
+# NOVA-KV
 
-Artifact for *Spend Bits Where Queries Look: Attention-Aware KV-Cache
-Quantization*. The serving engine (`python/`, a research fork of SGLang
-v0.5.10) holds full-attention layers' KV cache in a mixed pool — a shared BF16
-prefix, a per-request BF16 recent window, and rotated low-bit pages for the
-rest: group-VQ keys (fp8 codebook) and INT2 values. Both the accuracy and the
-throughput numbers in the paper are produced by this repo.
+Code for Spend Bits Where Queries Look: Attention-Aware KV-Cache Quantization. python/ is a research fork of SGLang v0.5.10. Full-attention layers use a mixed KV pool: a shared BF16 prefix, a per-request BF16 recent window, and low-bit pages elsewhere (group-VQ keys with fp8 codebooks, INT2 values).
 
-Methods served by `scripts/serve_method.sh`: `bf16` (baseline), `nova` (the
-paper method), `oscar` (nova without the VQ key tier), `quarot` / `turboquant`
-(real-INT2 baselines, no calibration needed), `turboquant_k3v3` (simulated
-3-bit baseline, accuracy only).
+scripts/serve_method.sh serves: `bf16` (baseline), `nova` (paper method), `oscar` (calibrated-rotation SQ baseline), `quarot` / `turboquant` (INT2 baselines, no calibration), `turboquant_k3v3` (simulated 3-bit, accuracy only).
 
-The gpt-oss-20b calibration bundle and its short-task datasets ship in-repo
-(sha256 in `artifacts/MANIFEST.json`), so gpt-oss reproduces out of the box
-after step 1. Everything else is built from scratch in steps 2 and 5: this
-archive is self-contained and downloads nothing except public model weights
-and, if you delete the cached corpus, the public `simonjegou/ruler` dataset.
+The gpt-oss-20b reproduces after step 1. Everything else is built in steps 2 and 5. The archive downloads public model weights and, if the cached corpus is deleted, the public simonjegou/ruler dataset.
 
 ## Step 1 — Install
 
